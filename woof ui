@@ -1,7 +1,5 @@
--- 可外部加载的UI库
 local Library = {}
 
--- 基础服务
 local a = {Plrs = "Players", LP = "LocalPlayer", RS = "ReplicatedStorage"}
 local b = setmetatable({}, 
     {
@@ -20,7 +18,6 @@ local dq = Instance.new
 local dr = function() end
 local ds = b.Players.LocalPlayer:GetMouse()
 
--- 动画函数
 local dv = {}
 function dv:Tween(dw, dx, dy, dz, dA)
     return b.TweenService:Create(
@@ -41,7 +38,6 @@ function dv:SwitchTab(dB)
     dB[1].Visible = true
 end
 
--- 全局库对象
 getgenv().library = {
     flags = {
         GetState = function(dt, du)
@@ -58,7 +54,6 @@ function library:UpdateToggle(du, be)
     library.flags[du]:SetState(be)
 end
 
--- UI创建函数
 local function createMainUI()
     local dD = dq("ScreenGui")
     local dE = dq("Frame")
@@ -95,7 +90,6 @@ local function createMainUI()
         dD.Parent = b.CoreGui
     end
 
-    -- 按钮反馈效果
     local function addButtonFeedback(btn, originalColor)
         originalColor = originalColor or btn.BackgroundColor3
         local hoverColor = Color3.new(
@@ -134,7 +128,6 @@ local function createMainUI()
         end)
     end
 
-    -- 可拖动功能
     local function makeDraggable(dragElement, inputElement)
         if not inputElement then inputElement = dragElement end
         local dragging = false
@@ -170,7 +163,6 @@ local function createMainUI()
         end)
     end
 
-    -- 创建主窗口
     dE.Name = "Main"
     dE.Parent = dD
     dE.BackgroundColor3 = dp(52, 62, 72)
@@ -198,7 +190,6 @@ local function createMainUI()
     dH.Name = "TextLabelCorner"
     dH.Parent = dG
 
-    -- 关闭按钮
     local closeBtn = dq("TextButton")
     closeBtn.Name = "CloseButton"
     closeBtn.Parent = dG
@@ -239,7 +230,6 @@ local function createMainUI()
         end)
     end)
 
-    -- 确认对话框
     local confirmFrame = dq("Frame")
     confirmFrame.Name = "ConfirmDialog"
     confirmFrame.Parent = dD
@@ -335,7 +325,6 @@ local function createMainUI()
 
     makeDraggable(dE, dG)
 
-    -- 侧边栏
     dI.Name = "Sidebar"
     dI.Parent = dE
     dI.BackgroundColor3 = dp(58, 69, 80)
@@ -379,7 +368,6 @@ local function createMainUI()
         dK.CanvasSize = dn(0, 0, 0, dL.AbsoluteContentSize.Y + 12)
     end)
 
-    -- 切换可见性按钮
     local toggleBtn = dq("TextButton")
     toggleBtn.Name = "ToggleVisibilityButton"
     toggleBtn.Parent = dD
@@ -410,7 +398,6 @@ local function createMainUI()
     return dD, dE, dK, dN, dG
 end
 
--- 创建Tab函数
 function library:CreateTab(dZ)
     local d_ = dq("TextButton")
     local e0 = dq("UICorner")
@@ -1076,56 +1063,51 @@ function library:CreateTab(dZ)
     return e7
 end
 
--- 外部接口
-Library.Tabs = {}
-
 function Library.new(name)
     local mainUI, mainFrame, tabButtons, tabHolder, title = createMainUI()
     
-    -- 设置窗口名称
     if name then
         title.Text = "  " .. name
     end
     
-    local Tabs = {}
-    setmetatable(Tabs, {
-        __index = function(self, tabName)
-            if not self[tabName] then
-                self[tabName] = {}
-                local tabInstance = library:CreateTab(tabName)
-                
-                -- 为每个Tab添加元素创建方法
-                self[tabName].Button = function(args)
-                    tabInstance:NewButton(args.Title, args.Callback)
-                end
-                
-                self[tabName].Toggle = function(args)
-                    tabInstance:NewToggle(args.Title, args.Flag, args.Value, args.Callback)
-                end
-                
-                self[tabName].Bind = function(args)
-                    tabInstance:NewBind(args.Title, args.Key, args.Callback)
-                end
-                
-                self[tabName].Slider = function(args)
-                    tabInstance:NewSlider(args.Title, args.Flag, args.Min, args.Max, args.Default, args.Decimal, args.Callback)
-                end
-                
-                self[tabName].Dropdown = function(args)
-                    tabInstance:NewDropdown(args.Title, args.Flag, args.List, args.Callback)
-                end
-                
-                self[tabName].Separator = function()
-                    tabInstance:NewSeparator()
-                end
-            end
-            return self[tabName]
-        end
-    })
+    local Window = {}
     
-    return Tabs
+    Window.CreateTab = function(tabName)
+        local tabInstance = library:CreateTab(tabName)
+        local Tab = {}
+        
+        Tab.Button = function(args)
+            tabInstance:NewButton(args.Title, args.Callback)
+        end
+        
+        Tab.Toggle = function(args)
+            tabInstance:NewToggle(args.Title, args.Flag, args.Value, args.Callback)
+        end
+        
+        Tab.Bind = function(args)
+            tabInstance:NewBind(args.Title, args.Key, args.Callback)
+        end
+        
+        Tab.Slider = function(args)
+            tabInstance:NewSlider(args.Title, args.Flag, args.Min, args.Max, args.Default, args.Decimal, args.Callback)
+        end
+        
+        Tab.Dropdown = function(args)
+            tabInstance:NewDropdown(args.Title, args.Flag, args.List, args.Callback)
+        end
+        
+        Tab.Separator = function()
+            tabInstance:NewSeparator()
+        end
+        
+        return Tab
+    end
+    
+    return Window
 end
 
--- 返回库对象
+Library.CreateWindow = Library.new
+
 getgenv().Library = Library
+getgenv().WoofUI = Library
 return Library
