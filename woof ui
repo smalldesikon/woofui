@@ -395,10 +395,21 @@ local function createMainUI()
         dE.Visible = uiVisible  
     end)
 
+    library.tabButtonsContainer = dK
+    library.tabHolderContainer = dN
+
     return dD, dE, dK, dN, dG
 end
 
 function library:CreateTab(dZ)
+    local tabButtons = library.tabButtonsContainer
+    local tabHolder = library.tabHolderContainer
+    
+    if not tabButtons or not tabHolder then
+        warn("WoofUI: Tab containers not initialized. Please ensure createMainUI is called first.")
+        return {}
+    end
+    
     local d_ = dq("TextButton")
     local e0 = dq("UICorner")
     local e1 = dq("Frame")
@@ -409,7 +420,7 @@ function library:CreateTab(dZ)
     local e6 = dq("UIListLayout")
 
     d_.Name = "TabButton"
-    d_.Parent = dK
+    d_.Parent = tabButtons
     d_.BackgroundColor3 = dp(52, 62, 72)
     d_.BorderSizePixel = 0
     d_.Size = dn(0, 94, 0, 28)
@@ -444,7 +455,7 @@ function library:CreateTab(dZ)
     e3.Parent = e1
 
     e4.Name = "Tab"
-    e4.Parent = dN
+    e4.Parent = tabHolder
     e4.Active = true
     e4.BackgroundColor3 = dp(255, 255, 255)
     e4.BackgroundTransparency = 1.000
@@ -1081,7 +1092,7 @@ function Library.new(name)
         end
         
         Tab.Toggle = function(args)
-            tabInstance:NewToggle(args.Title, args.Flag, args.Value, args.Callback)
+            tabInstance:NewToggle(args.Title, args.Flag, args.Default, args.Callback)
         end
         
         Tab.Bind = function(args)
@@ -1089,7 +1100,7 @@ function Library.new(name)
         end
         
         Tab.Slider = function(args)
-            tabInstance:NewSlider(args.Title, args.Flag, args.Min, args.Max, args.Default, args.Decimal, args.Callback)
+            tabInstance:NewSlider(args.Title, args.Flag, args.Default, args.Min, args.Max, args.Decimal, args.Callback)
         end
         
         Tab.Dropdown = function(args)
