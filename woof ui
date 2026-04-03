@@ -1,0 +1,875 @@
+-- 外部接口模块
+local WoofUIModule = {}
+
+-- 工具函数
+local a = {Plrs = "Players", LP = "LocalPlayer", RS = "ReplicatedStorage"}
+local b = setmetatable({}, 
+        {__index = function(self, c) return game.GetService(game, c)
+        end, __call = function(self, c)
+            return game.GetService(game, c)
+        end}
+)
+local dm = UDim.new
+local dn = UDim2.new
+local dp = Color3.fromRGB
+local dq = Instance.new
+local dr = function() end
+local ds = b.Players.LocalPlayer:GetMouse()
+
+-- 动画管理
+local dv = {}
+function dv:Tween(dw, dx, dy, dz, dA)
+    return b.TweenService:Create(
+        dx,
+        TweenInfo.new(dy or 0.25, Enum.EasingStyle[dz or "Linear"], Enum.EasingDirection[dA or "InOut"]),
+        dw
+    )
+end
+
+-- 按钮反馈效果
+local function addButtonFeedback(btn, originalColor)
+    originalColor = originalColor or btn.BackgroundColor3
+    local hoverColor = Color3.new(
+        math.min(originalColor.R + 0.1, 1),
+        math.min(originalColor.G + 0.1, 1),
+        math.min(originalColor.B + 0.1, 1)
+    )
+    btn.MouseEnter:Connect(function()
+        dv:Tween({BackgroundColor3 = hoverColor}, btn, 0.1):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        dv:Tween({BackgroundColor3 = originalColor}, btn, 0.1):Play()
+    end)
+
+    local originalSize = btn.Size
+    local pressed = false
+    local upConn = nil
+
+    btn.MouseButton1Down:Connect(function()
+        if pressed then return end
+        pressed = true
+        local shrunkSize = dn(
+            originalSize.X.Scale, originalSize.X.Offset * 0.95,
+            originalSize.Y.Scale, originalSize.Y.Offset * 0.95
+        )
+        dv:Tween({Size = shrunkSize}, btn, 0.1):Play()
+        if upConn then upConn:Disconnect() end
+        upConn = b.UserInputService.InputEnded:Connect(function(input, gp)
+            if pressed and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                pressed = false
+                dv:Tween({Size = originalSize}, btn, 0.1):Play()
+                upConn:Disconnect()
+                upConn = nil
+            end
+        end)
+    end)
+end
+
+-- UI实例
+local dD, dE, dK, dN, dI
+local tabs = {}
+local currentTab
+local library = {
+    flags = {},
+    tabs = {}
+}
+
+-- 初始化UI
+function WoofUIModule:Initialize()
+    if dD then return end
+    
+    dD = dq("ScreenGui")
+    dE = dq("Frame")
+    local dF = dq("UICorner")
+    local dG = dq("TextLabel")
+    local dH = dq("UICorner")
+    dI = dq("Frame")
+    local dJ = dq("UICorner")
+    dK = dq("ScrollingFrame")
+    local dL = dq("UIListLayout")
+    local dM = dq("UIPadding")
+    dN = dq("Frame")
+    local dO = dq("UICorner")
+
+    -- GUI保护
+    local function protect_gui(gui)
+        if syn and syn.protect_gui then
+            syn.protect_gui(gui)
+            return "core"
+        end
+        if rawget(getgenv(), "protect_gui") then
+            getgenv().protect_gui(gui)
+            return "core"
+        end
+        if gethui then
+            gui.Parent = gethui()
+            return "done"
+        end
+        return "core"
+    end
+
+    local protect_result = protect_gui(dD)
+    dD.Name = b.HttpService:GenerateGUID(true)
+    if protect_result == "core" then
+        dD.Parent = b.CoreGui
+    end
+
+    -- 主框架
+    dE.Name = "Main"
+    dE.Parent = dD
+    dE.BackgroundColor3 = dp(52, 62, 72)
+    dE.BorderSizePixel = 0
+    dE.Position = dn(0.5, 0, 0.5, 0)
+    dE.Size = dn(0, 448, 0, 280)
+    dE.AnchorPoint = Vector2.new(0.5, 0.5)
+
+    dF.CornerRadius = dm(0, 6)
+    dF.Name = "MainCorner"
+    dF.Parent = dE
+
+    -- 标题栏
+    dG.Parent = dE
+    dG.BackgroundColor3 = dp(58, 69, 80)
+    dG.BorderSizePixel = 0
+    dG.Position = dn(0, 6, 0, 6)
+    dG.Size = dn(0, 436, 0, 24)
+    dG.Font = Enum.Font.GothamBold
+    dG.Text = "  Woof Leak"
+    dG.TextColor3 = dp(255, 255, 255)
+    dG.TextSize = 14.000
+    dG.TextXAlignment = Enum.TextXAlignment.Left
+
+    dH.CornerRadius = dm(0, 6)
+    dH.Name = "TextLabelCorner"
+    dH.Parent = dG
+
+    -- 侧边栏
+    dI.Name = "Sidebar"
+    dI.Parent = dE
+    dI.BackgroundColor3 = dp(58, 69, 80)
+    dI.BorderSizePixel = 0
+    dI.Position = dn(0, 6, 0, 36)
+    dI.Size = dn(0, 106, 0, 238)
+
+    dJ.CornerRadius = dm(0, 6)
+    dJ.Name = "SidebarCorner"
+    dJ.Parent = dI
+
+    -- 标签按钮容器
+    dK.Name = "TabButtons"
+    dK.Parent = dI
+    dK.Active = true
+    dK.BackgroundColor3 = dp(255, 255, 255)
+    dK.BackgroundTransparency = 1.000
+    dK.BorderSizePixel = 0
+    dK.Size = dn(0, 106, 0, 238)
+    dK.ScrollBarThickness = 0
+
+    dL.Parent = dK
+    dL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    dL.SortOrder = Enum.SortOrder.LayoutOrder
+    dL.Padding = dm(0, 5)
+
+    dM.Parent = dK
+    dM.PaddingTop = dm(0, 6)
+
+    -- 内容区
+    dN.Name = "TabHolder"
+    dN.Parent = dE
+    dN.BackgroundColor3 = dp(58, 69, 80)
+    dN.BorderSizePixel = 0
+    dN.Position = dn(0, 118, 0, 36)
+    dN.Size = dn(0, 324, 0, 238)
+
+    dO.CornerRadius = dm(0, 6)
+    dO.Name = "TabHolderCorner"
+    dO.Parent = dN
+
+    -- 自动调整滚动
+    dL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        dK.CanvasSize = dn(0, 0, 0, dL.AbsoluteContentSize.Y + 12)
+    end)
+end
+
+-- 切换标签页
+function WoofUIModule:SwitchTab(tab)
+    if currentTab and currentTab[2] and currentTab[2].Glow then
+        dv:Tween({Transparency = 1}, currentTab[2].Glow):Play()
+    end
+    if tab and tab[2] and tab[2].Glow then
+        dv:Tween({Transparency = 0}, tab[2].Glow):Play()
+    end
+    if currentTab and currentTab[1] then
+        currentTab[1].Visible = false
+    end
+    if tab and tab[1] then
+        tab[1].Visible = true
+    end
+    currentTab = tab
+end
+
+-- 创建标签页
+function WoofUIModule:CreateTab(tabName)
+    if not dD then
+        self:Initialize()
+    end
+    
+    local tabButton = dq("TextButton")
+    local buttonCorner = dq("UICorner")
+    local glow = dq("Frame")
+    local glowCorner = dq("UICorner")
+    local glowGradient = dq("UIGradient")
+    local tabFrame = dq("ScrollingFrame")
+    local tabPadding = dq("UIPadding")
+    local tabLayout = dq("UIListLayout")
+
+    -- 标签按钮
+    tabButton.Name = "TabButton"
+    tabButton.Parent = dK
+    tabButton.BackgroundColor3 = dp(52, 62, 72)
+    tabButton.BorderSizePixel = 0
+    tabButton.Size = dn(0, 94, 0, 28)
+    tabButton.AutoButtonColor = false
+    tabButton.Font = Enum.Font.GothamSemibold
+    tabButton.Text = tabName
+    tabButton.TextColor3 = dp(255, 255, 255)
+    tabButton.TextSize = 14.000
+
+    buttonCorner.CornerRadius = dm(0, 6)
+    buttonCorner.Name = "TabButtonCorner"
+    buttonCorner.Parent = tabButton
+
+    -- 高亮
+    glow.Name = "Glow"
+    glow.Parent = tabButton
+    glow.BackgroundColor3 = dp(255, 255, 255)
+    glow.BorderSizePixel = 0
+    glow.Position = dn(0, 0, 0.928571463, 0)
+    glow.Size = dn(0, 94, 0, 2)
+    glow.Transparency = 1
+
+    glowCorner.CornerRadius = dm(0, 6)
+    glowCorner.Name = "GlowCorner"
+    glowCorner.Parent = glow
+
+    glowGradient.Color = ColorSequence.new {
+        ColorSequenceKeypoint.new(0.00, dp(52, 62, 72)),
+        ColorSequenceKeypoint.new(0.50, dp(255, 255, 255)),
+        ColorSequenceKeypoint.new(1.00, dp(52, 62, 72))
+    }
+    glowGradient.Name = "GlowGradient"
+    glowGradient.Parent = glow
+
+    -- 标签内容区
+    tabFrame.Name = "Tab"
+    tabFrame.Parent = dN
+    tabFrame.Active = true
+    tabFrame.BackgroundColor3 = dp(255, 255, 255)
+    tabFrame.BackgroundTransparency = 1.000
+    tabFrame.BorderSizePixel = 0
+    tabFrame.Size = dn(0, 324, 0, 238)
+    tabFrame.ScrollBarThickness = 0
+    tabFrame.Visible = false
+
+    -- 如果是第一个标签，设为激活状态
+    if not currentTab then
+        currentTab = {tabFrame, tabButton}
+        glow.Transparency = 0
+        tabFrame.Visible = true
+    end
+
+    tabPadding.Name = "TabPadding"
+    tabPadding.Parent = tabFrame
+    tabPadding.PaddingTop = dm(0, 6)
+
+    tabLayout.Name = "TabLayout"
+    tabLayout.Parent = tabFrame
+    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLayout.Padding = dm(0, 5)
+
+    -- 自动调整滚动
+    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        tabFrame.CanvasSize = dn(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 12)
+    end)
+
+    -- 点击切换标签
+    tabButton.MouseButton1Click:Connect(function()
+        self:SwitchTab({tabFrame, tabButton})
+    end)
+
+    -- 按钮反馈
+    addButtonFeedback(tabButton, dp(52, 62, 72))
+
+    -- 标签页方法
+    local tabMethods = {}
+    
+    function tabMethods:NewSeparator()
+        local sep = dq("Frame")
+        sep.Transparency = 1
+        sep.Size = dn(0, 0, 0, 0)
+        sep.BorderSizePixel = 0
+        sep.Parent = tabFrame
+    end
+
+    function tabMethods:NewButton(config)
+        local btn = dq("TextButton")
+        local corner = dq("UICorner")
+        
+        btn.Name = "BtnModule"
+        btn.Parent = tabFrame
+        btn.BackgroundColor3 = dp(52, 62, 72)
+        btn.BorderSizePixel = 0
+        btn.Size = dn(0, 312, 0, 28)
+        btn.AutoButtonColor = false
+        btn.Font = Enum.Font.GothamSemibold
+        btn.Text = "  " .. (config.Title or "Button")
+        btn.TextColor3 = dp(255, 255, 255)
+        btn.TextSize = 14.000
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        
+        corner.CornerRadius = dm(0, 6)
+        corner.Name = "BtnModuleCorner"
+        corner.Parent = btn
+        
+        if config.Callback and type(config.Callback) == "function" then
+            btn.MouseButton1Click:Connect(config.Callback)
+        end
+        
+        addButtonFeedback(btn, dp(52, 62, 72))
+        
+        return btn
+    end
+
+    function tabMethods:Toggle(config)
+        local toggleBtn = dq("TextButton")
+        local toggleCorner = dq("UICorner")
+        local offStatus = dq("Frame")
+        local offGradient = dq("UIGradient")
+        local offCorner = dq("UICorner")
+        local onStatus = dq("Frame")
+        local onCorner = dq("UICorner")
+        local onGradient = dq("UIGradient")
+        
+        local flagName = config.Flag or config.Title
+        local state = config.Value or false
+        
+        -- 创建标志
+        library.flags[flagName] = {
+            State = state,
+            Callback = config.Callback or dr,
+            SetState = function(self, newState)
+                newState = (newState ~= nil) and newState or not self.State
+                self.State = newState
+                library.flags[flagName].State = newState
+                
+                if config.Callback then
+                    task.spawn(function() config.Callback(newState) end)
+                end
+                
+                dv:Tween({Transparency = newState and 1 or 0}, offStatus):Play()
+                dv:Tween({Transparency = newState and 0 or 1}, onStatus):Play()
+            end
+        }
+        
+        toggleBtn.Name = "ToggleModule"
+        toggleBtn.Parent = tabFrame
+        toggleBtn.BackgroundColor3 = dp(52, 62, 72)
+        toggleBtn.BorderSizePixel = 0
+        toggleBtn.Size = dn(0, 312, 0, 28)
+        toggleBtn.AutoButtonColor = false
+        toggleBtn.Font = Enum.Font.GothamSemibold
+        toggleBtn.Text = "  " .. config.Title
+        toggleBtn.TextColor3 = dp(255, 255, 255)
+        toggleBtn.TextSize = 14.000
+        toggleBtn.TextXAlignment = Enum.TextXAlignment.Left
+        
+        toggleCorner.CornerRadius = dm(0, 6)
+        toggleCorner.Name = "ToggleModuleCorner"
+        toggleCorner.Parent = toggleBtn
+        
+        -- 关闭状态
+        offStatus.Name = "OffStatus"
+        offStatus.Parent = toggleBtn
+        offStatus.BackgroundColor3 = dp(255, 255, 255)
+        offStatus.BorderSizePixel = 0
+        offStatus.Position = dn(0.878205061, 0, 0.178571433, 0)
+        offStatus.Size = dn(0, 34, 0, 18)
+        
+        offGradient.Color = ColorSequence.new {
+            ColorSequenceKeypoint.new(0.00, dp(255, 83, 83)),
+            ColorSequenceKeypoint.new(0.15, dp(255, 83, 83)),
+            ColorSequenceKeypoint.new(0.62, dp(52, 62, 72)),
+            ColorSequenceKeypoint.new(1.00, dp(52, 62, 72))
+        }
+        offGradient.Rotation = 300
+        offGradient.Name = "OffGrad"
+        offGradient.Parent = offStatus
+        
+        offCorner.CornerRadius = dm(0, 4)
+        offCorner.Name = "OffStatusCorner"
+        offCorner.Parent = offStatus
+        
+        -- 开启状态
+        onStatus.Name = "OnStatus"
+        onStatus.Parent = toggleBtn
+        onStatus.BackgroundColor3 = dp(255, 255, 255)
+        onStatus.BackgroundTransparency = 1.000
+        onStatus.BorderSizePixel = 0
+        onStatus.Position = dn(0.878205121, 0, 0.178571433, 0)
+        onStatus.Size = dn(0, 34, 0, 18)
+        onStatus.Transparency = 1
+        
+        onCorner.CornerRadius = dm(0, 4)
+        onCorner.Name = "OnStatusCorner"
+        onCorner.Parent = onStatus
+        
+        onGradient.Color = ColorSequence.new {
+            ColorSequenceKeypoint.new(0.00, dp(52, 62, 72)),
+            ColorSequenceKeypoint.new(0.38, dp(48, 57, 67)),
+            ColorSequenceKeypoint.new(1.00, dp(53, 255, 134))
+        }
+        onGradient.Rotation = 300
+        onGradient.Name = "OnGrad"
+        onGradient.Parent = onStatus
+        
+        -- 点击事件
+        toggleBtn.MouseButton1Click:Connect(function()
+            library.flags[flagName]:SetState()
+        end)
+        
+        -- 设置初始状态
+        if state then
+            library.flags[flagName]:SetState(true)
+        end
+        
+        addButtonFeedback(toggleBtn, dp(52, 62, 72))
+        
+        return {
+            Set = function(value)
+                library.flags[flagName]:SetState(value)
+            end,
+            Get = function()
+                return library.flags[flagName].State
+            end
+        }
+    end
+
+    function tabMethods:Button(config)
+        return tabMethods.NewButton(tabMethods, config)
+    end
+    
+    function tabMethods:Slider(config)
+        local sliderBtn = dq("TextButton")
+        local sliderCorner = dq("UICorner")
+        local sliderBar = dq("Frame")
+        local barCorner = dq("UICorner")
+        local sliderPart = dq("Frame")
+        local partCorner = dq("UICorner")
+        local valueBox = dq("TextBox")
+        local valueCorner = dq("UICorner")
+        local addBtn = dq("TextButton")
+        local minusBtn = dq("TextButton")
+        
+        local flagName = config.Flag or config.Title
+        local min = config.Min or 0
+        local max = config.Max or 100
+        local default = config.Default or min
+        local callback = config.Callback or dr
+        
+        library.flags[flagName] = {
+            State = default,
+            SetValue = function(self, value)
+                if value then
+                    value = tonumber(value)
+                    if value then
+                        value = math.clamp(value, min, max)
+                        library.flags[flagName].State = value
+                        valueBox.Text = tostring(math.floor(value))
+                        local percent = (value - min) / (max - min)
+                        sliderPart.Size = dn(percent, 0, 1, 0)
+                        callback(value)
+                    end
+                end
+            end
+        }
+        
+        sliderBtn.Name = "SliderModule"
+        sliderBtn.Parent = tabFrame
+        sliderBtn.BackgroundColor3 = dp(52, 62, 72)
+        sliderBtn.BorderSizePixel = 0
+        sliderBtn.Size = dn(0, 312, 0, 28)
+        sliderBtn.AutoButtonColor = false
+        sliderBtn.Font = Enum.Font.GothamSemibold
+        sliderBtn.Text = "  " .. config.Title
+        sliderBtn.TextColor3 = dp(255, 255, 255)
+        sliderBtn.TextSize = 14.000
+        sliderBtn.TextXAlignment = Enum.TextXAlignment.Left
+        
+        sliderCorner.CornerRadius = dm(0, 6)
+        sliderCorner.Name = "SliderModuleCorner"
+        sliderCorner.Parent = sliderBtn
+        
+        sliderBar.Name = "SliderBar"
+        sliderBar.Parent = sliderBtn
+        sliderBar.BackgroundColor3 = dp(58, 69, 80)
+        sliderBar.BorderSizePixel = 0
+        sliderBar.Position = dn(0.442307681, 0, 0.392857134, 0)
+        sliderBar.Size = dn(0, 108, 0, 6)
+        
+        barCorner.CornerRadius = dm(0, 2)
+        barCorner.Name = "SliderBarCorner"
+        barCorner.Parent = sliderBar
+        
+        sliderPart.Name = "SliderPart"
+        sliderPart.Parent = sliderBar
+        sliderPart.BackgroundColor3 = dp(255, 255, 255)
+        sliderPart.BorderSizePixel = 0
+        sliderPart.Size = dn(0, 0, 0, 6)
+        
+        partCorner.CornerRadius = dm(0, 2)
+        partCorner.Name = "SliderPartCorner"
+        partCorner.Parent = sliderPart
+        
+        valueBox.Name = "SliderValue"
+        valueBox.Parent = sliderBtn
+        valueBox.BackgroundColor3 = dp(58, 69, 80)
+        valueBox.BorderSizePixel = 0
+        valueBox.Position = dn(0.884615362, 0, 0.178571433, 0)
+        valueBox.Size = dn(0, 32, 0, 18)
+        valueBox.Font = Enum.Font.Gotham
+        valueBox.Text = tostring(default)
+        valueBox.TextColor3 = dp(255, 255, 255)
+        valueBox.TextSize = 12.000
+        
+        valueCorner.CornerRadius = dm(0, 4)
+        valueCorner.Name = "SliderValueCorner"
+        valueCorner.Parent = valueBox
+        
+        addBtn.Name = "AddSlider"
+        addBtn.Parent = sliderBtn
+        addBtn.BackgroundColor3 = dp(255, 255, 255)
+        addBtn.BackgroundTransparency = 1.000
+        addBtn.BorderSizePixel = 0
+        addBtn.Position = dn(0.807692289, 0, 0.178571433, 0)
+        addBtn.Size = dn(0, 18, 0, 18)
+        addBtn.Font = Enum.Font.Gotham
+        addBtn.Text = "+"
+        addBtn.TextColor3 = dp(255, 255, 255)
+        addBtn.TextSize = 18.000
+        
+        minusBtn.Name = "MinusSlider"
+        minusBtn.Parent = sliderBtn
+        minusBtn.BackgroundColor3 = dp(255, 255, 255)
+        minusBtn.BackgroundTransparency = 1.000
+        minusBtn.BorderSizePixel = 0
+        minusBtn.Position = dn(0.365384609, 0, 0.178571433, 0)
+        minusBtn.Size = dn(0, 18, 0, 18)
+        minusBtn.Font = Enum.Font.Gotham
+        minusBtn.Text = "-"
+        minusBtn.TextColor3 = dp(255, 255, 255)
+        minusBtn.TextSize = 18.000
+        
+        -- 按钮事件
+        minusBtn.MouseButton1Click:Connect(function()
+            local value = library.flags[flagName].State
+            value = math.clamp(value - 1, min, max)
+            library.flags[flagName]:SetValue(value)
+        end)
+        
+        addBtn.MouseButton1Click:Connect(function()
+            local value = library.flags[flagName].State
+            value = math.clamp(value + 1, min, max)
+            library.flags[flagName]:SetValue(value)
+        end)
+        
+        -- 设置初始值
+        library.flags[flagName]:SetValue(default)
+        
+        -- 滑块拖拽
+        local dragging = false
+        local function updateSliderFromInput(input)
+            local pos = input.Position
+            local percent = (pos.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
+            percent = math.clamp(percent, 0, 1)
+            local newValue = min + (max - min) * percent
+            library.flags[flagName]:SetValue(newValue)
+        end
+        
+        sliderBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                updateSliderFromInput(input)
+                dragging = true
+            end
+        end)
+        
+        b.UserInputService.InputEnded:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                dragging = false
+            end
+        end)
+        
+        b.UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                updateSliderFromInput(input)
+            end
+        end)
+        
+        -- 文本框输入
+        local typing = false
+        valueBox.Focused:Connect(function()
+            typing = true
+        end)
+        
+        valueBox.FocusLost:Connect(function()
+            typing = false
+            if valueBox.Text == "" then
+                library.flags[flagName]:SetValue(default)
+            end
+        end)
+        
+        valueBox:GetPropertyChangedSignal("Text"):Connect(function()
+            if not typing then return end
+            valueBox.Text = valueBox.Text:gsub("%D+", "")
+            local text = valueBox.Text
+            if text ~= "" and tonumber(text) then
+                library.flags[flagName]:SetValue(tonumber(text))
+            end
+        end)
+        
+        addButtonFeedback(sliderBtn, dp(52, 62, 72))
+        addButtonFeedback(addBtn, dp(255, 255, 255))
+        addButtonFeedback(minusBtn, dp(255, 255, 255))
+        
+        return {
+            Set = function(value)
+                library.flags[flagName]:SetValue(value)
+            end,
+            Get = function()
+                return library.flags[flagName].State
+            end
+        }
+    end
+
+    function tabMethods:Dropdown(config)
+        local dropdownBtn = dq("TextButton")
+        local dropdownCorner = dq("UICorner")
+        local dropdownText = dq("TextBox")
+        local openBtn = dq("TextButton")
+        local dropdownBottom = dq("Frame")
+        local bottomCorner = dq("UICorner")
+        local bottomLayout = dq("UIListLayout")
+        local bottomPadding = dq("UIPadding")
+        
+        local flagName = config.Flag or config.Title
+        local options = config.Options or {}
+        local callback = config.Callback or dr
+        
+        library.flags[flagName] = { 
+            State = options[1] or "",
+            SetOptions = function(self, newOptions)
+                options = newOptions
+                -- 清空现有选项
+                for _, child in ipairs(dropdownBottom:GetChildren()) do
+                    if child:IsA("TextButton") then
+                        child:Destroy()
+                    end
+                end
+                -- 添加新选项
+                for _, opt in ipairs(newOptions) do
+                    self:AddOption(opt)
+                end
+            end,
+            AddOption = function(self, optName)
+                local btn = dq("TextButton")
+                local corner = dq("UICorner")
+                btn.Name = optName
+                btn.Parent = dropdownBottom
+                btn.BackgroundColor3 = dp(58, 69, 80)
+                btn.BorderSizePixel = 0
+                btn.Size = dn(0, 300, 0, 28)
+                btn.AutoButtonColor = false
+                btn.Font = Enum.Font.GothamSemibold
+                btn.Text = optName
+                btn.TextColor3 = dp(255, 255, 255)
+                btn.TextSize = 14.000
+                corner.CornerRadius = dm(0, 6)
+                corner.Name = "OptionCorner"
+                corner.Parent = btn
+                btn.MouseButton1Click:Connect(function()
+                    dropdownText.PlaceholderText = optName
+                    dropdownText.Text = ""
+                    library.flags[flagName].State = optName
+                    callback(optName)
+                    if isOpen then
+                        toggleDropdown()
+                    end
+                end)
+                addButtonFeedback(btn, dp(58, 69, 80))
+            end,
+            RemoveOption = function(self, optName)
+                local child = dropdownBottom:FindFirstChild(optName)
+                if child then
+                    child:Destroy()
+                end
+            end
+        }
+        
+        dropdownBtn.Name = "DropdownModule"
+        dropdownBtn.Parent = tabFrame
+        dropdownBtn.BackgroundColor3 = dp(52, 62, 72)
+        dropdownBtn.BorderSizePixel = 0
+        dropdownBtn.Size = dn(0, 312, 0, 28)
+        dropdownBtn.AutoButtonColor = false
+        dropdownBtn.Font = Enum.Font.GothamSemibold
+        dropdownBtn.Text = ""
+        dropdownBtn.TextColor3 = dp(255, 255, 255)
+        dropdownBtn.TextSize = 14.000
+        dropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
+        
+        dropdownCorner.CornerRadius = dm(0, 6)
+        dropdownCorner.Name = "DropdownModuleCorner"
+        dropdownCorner.Parent = dropdownBtn
+        
+        dropdownText.Name = "DropdownText"
+        dropdownText.Parent = dropdownBtn
+        dropdownText.BackgroundColor3 = dp(255, 255, 255)
+        dropdownText.BackgroundTransparency = 1.000
+        dropdownText.Position = dn(0.025641026, 0, 0, 0)
+        dropdownText.Size = dn(0, 192, 0, 28)
+        dropdownText.Font = Enum.Font.GothamSemibold
+        dropdownText.PlaceholderText = config.Title
+        dropdownText.PlaceholderColor3 = dp(255, 255, 255)
+        dropdownText.TextColor3 = dp(255, 255, 255)
+        dropdownText.TextSize = 14.000
+        dropdownText.TextXAlignment = Enum.TextXAlignment.Left
+        dropdownText.Text = ""
+        
+        openBtn.Name = "OpenDropdown"
+        openBtn.Parent = dropdownBtn
+        openBtn.BackgroundColor3 = dp(255, 255, 255)
+        openBtn.BackgroundTransparency = 1.000
+        openBtn.BorderSizePixel = 0
+        openBtn.Position = dn(0.907051265, 0, 0.178571433, 0)
+        openBtn.Size = dn(0, 18, 0, 18)
+        openBtn.Font = Enum.Font.Gotham
+        openBtn.Text = "+"
+        openBtn.TextColor3 = dp(255, 255, 255)
+        openBtn.TextSize = 22.000
+        
+        dropdownBottom.Name = "DropdownBottom"
+        dropdownBottom.Parent = tabFrame
+        dropdownBottom.BackgroundColor3 = dp(52, 62, 72)
+        dropdownBottom.BorderSizePixel = 0
+        dropdownBottom.ClipsDescendants = true
+        dropdownBottom.Size = dn(0, 312, 0, 0)
+        dropdownBottom.AutoButtonColor = false
+        dropdownBottom.Visible = false
+        
+        bottomCorner.CornerRadius = dm(0, 6)
+        bottomCorner.Name = "DropdownBottomCorner"
+        bottomCorner.Parent = dropdownBottom
+        
+        bottomLayout.Name = "DropdownBottomLayout"
+        bottomLayout.Parent = dropdownBottom
+        bottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        bottomLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        bottomLayout.Padding = dm(0, 6)
+        
+        bottomPadding.Name = "DropdownBottomPadding"
+        bottomPadding.Parent = dropdownBottom
+        bottomPadding.PaddingTop = dm(0, 6)
+        
+        -- 添加选项
+        for _, option in ipairs(options) do
+            library.flags[flagName]:AddOption(option)
+        end
+        
+        -- 自动调整大小
+        local isOpen = false
+        bottomLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if isOpen then
+                dv:Tween({Size = dn(0, 312, 0, bottomLayout.AbsoluteContentSize.Y + 12)}, dropdownBottom, 0.1):Play()
+            end
+        end)
+        
+        local function toggleDropdown()
+            isOpen = not isOpen
+            if isOpen then
+                dropdownBottom.Visible = true
+                openBtn.Text = "-"
+                dv:Tween({Size = dn(0, 312, 0, bottomLayout.AbsoluteContentSize.Y + 12)}, dropdownBottom, 0.2):Play()
+            else
+                openBtn.Text = "+"
+                dv:Tween({Size = dn(0, 312, 0, 0)}, dropdownBottom, 0.2):Play()
+                wait(0.2)
+                dropdownBottom.Visible = false
+            end
+        end
+        
+        openBtn.MouseButton1Click:Connect(toggleDropdown)
+        
+        addButtonFeedback(dropdownBtn, dp(52, 62, 72))
+        addButtonFeedback(openBtn, dp(255, 255, 255))
+        
+        return {
+            SetOptions = function(newOptions)
+                library.flags[flagName]:SetOptions(newOptions)
+            end,
+            AddOption = function(option)
+                library.flags[flagName]:AddOption(option)
+            end,
+            RemoveOption = function(option)
+                library.flags[flagName]:RemoveOption(option)
+            end,
+            GetValue = function()
+                return library.flags[flagName].State
+            end
+        }
+    end
+
+    -- 存储标签页
+    tabs[tabName] = tabMethods
+    library.tabs[tabName] = tabMethods
+    
+    return tabMethods
+end
+
+-- 外部接口
+function WoofUIModule:CreateWindow(name)
+    if not dD then
+        self:Initialize()
+    end
+    
+    if name then
+        dE:FindFirstChild("TextLabel").Text = "  " .. name
+    end
+    
+    return {
+        CreateTab = function(tabName)
+            return WoofUIModule:CreateTab(tabName)
+        end,
+        Toggle = function(state)
+            dD.Enabled = not dD.Enabled
+        end,
+        Destroy = function()
+            if dD then
+                dD:Destroy()
+                dD = nil
+            end
+        end
+    }
+end
+
+-- 设置UI名称
+function WoofUIModule:SetName(name)
+    if dD and dE then
+        local label = dE:FindFirstChild("TextLabel")
+        if label then
+            label.Text = "  " .. name
+        end
+    end
+end
+
+-- 返回模块
+return WoofUIModule
