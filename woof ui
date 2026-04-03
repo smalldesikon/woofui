@@ -880,16 +880,21 @@ function library:CreateTab(dZ)
     end
 
     function e7:NewDropdown(e9, du, eP, ea)
-        ea = ea or dr
-        library.flags[du] = { State = eP[1] }
-        local eQ = dq("TextButton")
-        local eR = dq("UICorner")
-        local eS = dq("TextBox")
-        local eT = dq("TextButton")
-        local eU = dq("TextButton")
-        local eV = dq("UICorner")
-        local eW = dq("UIListLayout")
-        local eX = dq("UIPadding")
+    ea = ea or dr
+    eP = eP or {}
+    if #eP == 0 then
+        eP = {"选项1"}
+    end
+    
+    library.flags[du] = { State = eP[1] }
+    local eQ = dq("TextButton")
+    local eR = dq("UICorner")
+    local eS = dq("TextBox")
+    local eT = dq("TextButton")
+    local eU = dq("TextButton")
+    local eV = dq("UICorner")
+    local eW = dq("UIListLayout")
+    local eX = dq("UIPadding")
 
         eQ.Name = "DropdownModule"
         eQ.Parent = e4
