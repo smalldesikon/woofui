@@ -1,13 +1,17 @@
--- 外部接口模块
-local WoofUIModule = {}
+-- 可外部加载的UI库
+local Library = {}
 
--- 工具函数
+-- 基础服务
 local a = {Plrs = "Players", LP = "LocalPlayer", RS = "ReplicatedStorage"}
 local b = setmetatable({}, 
-        {__index = function(self, c) return game.GetService(game, c)
-        end, __call = function(self, c)
-            return game.GetService(game, c)
-        end}
+    {
+        __index = function(self, c) 
+            return game:GetService(c)
+        end, 
+        __call = function(self, c)
+            return game:GetService(c)
+        end
+    }
 )
 local dm = UDim.new
 local dn = UDim2.new
@@ -16,7 +20,7 @@ local dq = Instance.new
 local dr = function() end
 local ds = b.Players.LocalPlayer:GetMouse()
 
--- 动画管理
+-- 动画函数
 local dv = {}
 function dv:Tween(dw, dx, dy, dz, dA)
     return b.TweenService:Create(
@@ -26,72 +30,49 @@ function dv:Tween(dw, dx, dy, dz, dA)
     )
 end
 
--- 按钮反馈效果
-local function addButtonFeedback(btn, originalColor)
-    originalColor = originalColor or btn.BackgroundColor3
-    local hoverColor = Color3.new(
-        math.min(originalColor.R + 0.1, 1),
-        math.min(originalColor.G + 0.1, 1),
-        math.min(originalColor.B + 0.1, 1)
-    )
-    btn.MouseEnter:Connect(function()
-        dv:Tween({BackgroundColor3 = hoverColor}, btn, 0.1):Play()
-    end)
-    btn.MouseLeave:Connect(function()
-        dv:Tween({BackgroundColor3 = originalColor}, btn, 0.1):Play()
-    end)
-
-    local originalSize = btn.Size
-    local pressed = false
-    local upConn = nil
-
-    btn.MouseButton1Down:Connect(function()
-        if pressed then return end
-        pressed = true
-        local shrunkSize = dn(
-            originalSize.X.Scale, originalSize.X.Offset * 0.95,
-            originalSize.Y.Scale, originalSize.Y.Offset * 0.95
-        )
-        dv:Tween({Size = shrunkSize}, btn, 0.1):Play()
-        if upConn then upConn:Disconnect() end
-        upConn = b.UserInputService.InputEnded:Connect(function(input, gp)
-            if pressed and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-                pressed = false
-                dv:Tween({Size = originalSize}, btn, 0.1):Play()
-                upConn:Disconnect()
-                upConn = nil
-            end
-        end)
-    end)
+function dv:SwitchTab(dB)
+    if not library.currentTab or not library.currentTab[2] then return end
+    local dC = library.currentTab
+    if dC == dB then return end
+    library.currentTab = dB
+    dv:Tween({Transparency = 1}, dC[2].Glow):Play()
+    dv:Tween({Transparency = 0}, dB[2].Glow):Play()
+    dC[1].Visible = false
+    dB[1].Visible = true
 end
 
--- UI实例
-local dD, dE, dK, dN, dI
-local tabs = {}
-local currentTab
-local library = {
-    flags = {},
-    tabs = {}
+-- 全局库对象
+getgenv().library = {
+    flags = {
+        GetState = function(dt, du)
+            return library.flags[du] and library.flags[du].State
+        end
+    },
+    modules = {},
+    currentTab = nil
 }
 
--- 初始化UI
-function WoofUIModule:Initialize()
-    if dD then return end
-    
-    dD = dq("ScreenGui")
-    dE = dq("Frame")
+function library:UpdateToggle(du, be)
+    be = be or library.flags:GetState(du)
+    if be == library.flags:GetState(du) then return end
+    library.flags[du]:SetState(be)
+end
+
+-- UI创建函数
+local function createMainUI()
+    local dD = dq("ScreenGui")
+    local dE = dq("Frame")
     local dF = dq("UICorner")
     local dG = dq("TextLabel")
     local dH = dq("UICorner")
-    dI = dq("Frame")
+    local dI = dq("Frame")
     local dJ = dq("UICorner")
-    dK = dq("ScrollingFrame")
+    local dK = dq("ScrollingFrame")
     local dL = dq("UIListLayout")
     local dM = dq("UIPadding")
-    dN = dq("Frame")
+    local dN = dq("Frame")
     local dO = dq("UICorner")
 
-    -- GUI保护
     local function protect_gui(gui)
         if syn and syn.protect_gui then
             syn.protect_gui(gui)
@@ -114,7 +95,82 @@ function WoofUIModule:Initialize()
         dD.Parent = b.CoreGui
     end
 
-    -- 主框架
+    -- 按钮反馈效果
+    local function addButtonFeedback(btn, originalColor)
+        originalColor = originalColor or btn.BackgroundColor3
+        local hoverColor = Color3.new(
+            math.min(originalColor.R + 0.1, 1),
+            math.min(originalColor.G + 0.1, 1),
+            math.min(originalColor.B + 0.1, 1)
+        )
+        btn.MouseEnter:Connect(function()
+            dv:Tween({BackgroundColor3 = hoverColor}, btn, 0.1):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            dv:Tween({BackgroundColor3 = originalColor}, btn, 0.1):Play()
+        end)
+
+        local originalSize = btn.Size
+        local pressed = false
+        local upConn = nil
+
+        btn.MouseButton1Down:Connect(function()
+            if pressed then return end
+            pressed = true
+            local shrunkSize = dn(
+                originalSize.X.Scale, originalSize.X.Offset * 0.95,
+                originalSize.Y.Scale, originalSize.Y.Offset * 0.95
+            )
+            dv:Tween({Size = shrunkSize}, btn, 0.1):Play()
+            if upConn then upConn:Disconnect() end
+            upConn = b.UserInputService.InputEnded:Connect(function(input, gp)
+                if pressed and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                    pressed = false
+                    dv:Tween({Size = originalSize}, btn, 0.1):Play()
+                    upConn:Disconnect()
+                    upConn = nil
+                end
+            end)
+        end)
+    end
+
+    -- 可拖动功能
+    local function makeDraggable(dragElement, inputElement)
+        if not inputElement then inputElement = dragElement end
+        local dragging = false
+        local dragStartPos
+        local initialPosition
+
+        local function updatePosition(input)
+            local delta = input.Position - dragStartPos
+            dragElement.Position = dn(
+                initialPosition.X.Scale, initialPosition.X.Offset + delta.X,
+                initialPosition.Y.Scale, initialPosition.Y.Offset + delta.Y
+            )
+        end
+
+        inputElement.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStartPos = input.Position
+                initialPosition = dragElement.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        b.UserInputService.InputChanged:Connect(function(input)
+            if not dragging then return end
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                updatePosition(input)
+            end
+        end)
+    end
+
+    -- 创建主窗口
     dE.Name = "Main"
     dE.Parent = dD
     dE.BackgroundColor3 = dp(52, 62, 72)
@@ -127,7 +183,6 @@ function WoofUIModule:Initialize()
     dF.Name = "MainCorner"
     dF.Parent = dE
 
-    -- 标题栏
     dG.Parent = dE
     dG.BackgroundColor3 = dp(58, 69, 80)
     dG.BorderSizePixel = 0
@@ -143,6 +198,143 @@ function WoofUIModule:Initialize()
     dH.Name = "TextLabelCorner"
     dH.Parent = dG
 
+    -- 关闭按钮
+    local closeBtn = dq("TextButton")
+    closeBtn.Name = "CloseButton"
+    closeBtn.Parent = dG
+    closeBtn.BackgroundColor3 = dp(255, 255, 255)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Size = dn(0, 20, 0, 20)
+    closeBtn.Position = dn(1, -26, 0.5, -10)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = dp(255, 255, 255)
+    closeBtn.TextSize = 16
+    closeBtn.TextScaled = true
+    closeBtn.ZIndex = 10
+
+    closeBtn.MouseEnter:Connect(function()
+        dv:Tween({TextColor3 = dp(200,200,200)}, closeBtn, 0.1):Play()
+    end)
+    closeBtn.MouseLeave:Connect(function()
+        dv:Tween({TextColor3 = dp(255,255,255)}, closeBtn, 0.1):Play()
+    end)
+
+    local closeOriginalSize = closeBtn.Size
+    local closePressed = false
+    local closeUpConn = nil
+    closeBtn.MouseButton1Down:Connect(function()
+        if closePressed then return end
+        closePressed = true
+        local shrunk = dn(closeOriginalSize.X.Scale, closeOriginalSize.X.Offset*0.95, closeOriginalSize.Y.Scale, closeOriginalSize.Y.Offset*0.95)
+        dv:Tween({Size = shrunk}, closeBtn, 0.1):Play()
+        if closeUpConn then closeUpConn:Disconnect() end
+        closeUpConn = b.UserInputService.InputEnded:Connect(function(input, gp)
+            if closePressed and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                closePressed = false
+                dv:Tween({Size = closeOriginalSize}, closeBtn, 0.1):Play()
+                closeUpConn:Disconnect()
+                closeUpConn = nil
+            end
+        end)
+    end)
+
+    -- 确认对话框
+    local confirmFrame = dq("Frame")
+    confirmFrame.Name = "ConfirmDialog"
+    confirmFrame.Parent = dD
+    confirmFrame.BackgroundColor3 = dp(52, 62, 72)
+    confirmFrame.BorderSizePixel = 0
+    confirmFrame.Position = dn(0.5, 0, 0.5, 0)
+    confirmFrame.Size = dn(0, 250, 0, 120)
+    confirmFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    confirmFrame.Visible = false
+    confirmFrame.ZIndex = 100
+
+    local confirmCorner = dq("UICorner")
+    confirmCorner.CornerRadius = dm(0, 6)
+    confirmCorner.Parent = confirmFrame
+
+    local confirmTitle = dq("TextLabel")
+    confirmTitle.Name = "Title"
+    confirmTitle.Parent = confirmFrame
+    confirmTitle.BackgroundColor3 = dp(58, 69, 80)
+    confirmTitle.BorderSizePixel = 0
+    confirmTitle.Size = dn(1, 0, 0, 30)
+    confirmTitle.Font = Enum.Font.GothamBold
+    confirmTitle.Text = "  提示"
+    confirmTitle.TextColor3 = dp(255, 255, 255)
+    confirmTitle.TextSize = 14
+    confirmTitle.TextXAlignment = Enum.TextXAlignment.Left
+    confirmTitle.ZIndex = 101
+
+    local confirmTitleCorner = dq("UICorner")
+    confirmTitleCorner.CornerRadius = dm(0, 6)
+    confirmTitleCorner.Parent = confirmTitle
+
+    local confirmText = dq("TextLabel")
+    confirmText.Name = "Message"
+    confirmText.Parent = confirmFrame
+    confirmText.BackgroundColor3 = dp(255, 255, 255)
+    confirmText.BackgroundTransparency = 1
+    confirmText.Position = dn(0, 0, 0, 35)
+    confirmText.Size = dn(1, 0, 0, 30)
+    confirmText.Font = Enum.Font.Gotham
+    confirmText.Text = "你确定要关闭吗？"
+    confirmText.TextColor3 = dp(255, 255, 255)
+    confirmText.TextSize = 14
+    confirmText.ZIndex = 101
+
+    local cancelBtn = dq("TextButton")
+    cancelBtn.Name = "Cancel"
+    cancelBtn.Parent = confirmFrame
+    cancelBtn.BackgroundColor3 = dp(58, 69, 80)
+    cancelBtn.BorderSizePixel = 0
+    cancelBtn.Position = dn(0, 15, 1, -40)
+    cancelBtn.Size = dn(0, 90, 0, 28)
+    cancelBtn.Font = Enum.Font.GothamSemibold
+    cancelBtn.Text = "取消"
+    cancelBtn.TextColor3 = dp(255, 255, 255)
+    cancelBtn.TextSize = 14
+    cancelBtn.ZIndex = 101
+
+    local cancelCorner = dq("UICorner")
+    cancelCorner.CornerRadius = dm(0, 6)
+    cancelCorner.Parent = cancelBtn
+
+    local confirmBtn = dq("TextButton")
+    confirmBtn.Name = "Confirm"
+    confirmBtn.Parent = confirmFrame
+    confirmBtn.BackgroundColor3 = dp(58, 69, 80)
+    confirmBtn.BorderSizePixel = 0
+    confirmBtn.Position = dn(1, -105, 1, -40)
+    confirmBtn.Size = dn(0, 90, 0, 28)
+    confirmBtn.Font = Enum.Font.GothamSemibold
+    confirmBtn.Text = "确认"
+    confirmBtn.TextColor3 = dp(255, 255, 255)
+    confirmBtn.TextSize = 14
+    confirmBtn.ZIndex = 101
+
+    local confirmCornerBtn = dq("UICorner")
+    confirmCornerBtn.CornerRadius = dm(0, 6)
+    confirmCornerBtn.Parent = confirmBtn
+
+    addButtonFeedback(cancelBtn, dp(58,69,80))
+    addButtonFeedback(confirmBtn, dp(58,69,80))
+
+    closeBtn.MouseButton1Click:Connect(function()
+        confirmFrame.Visible = true
+    end)
+
+    cancelBtn.MouseButton1Click:Connect(function()
+        confirmFrame.Visible = false
+    end)
+    confirmBtn.MouseButton1Click:Connect(function()
+        dD.Enabled = false  
+    end)
+
+    makeDraggable(dE, dG)
+
     -- 侧边栏
     dI.Name = "Sidebar"
     dI.Parent = dE
@@ -155,7 +347,6 @@ function WoofUIModule:Initialize()
     dJ.Name = "SidebarCorner"
     dJ.Parent = dI
 
-    -- 标签按钮容器
     dK.Name = "TabButtons"
     dK.Parent = dI
     dK.Active = true
@@ -173,7 +364,6 @@ function WoofUIModule:Initialize()
     dM.Parent = dK
     dM.PaddingTop = dm(0, 6)
 
-    -- 内容区
     dN.Name = "TabHolder"
     dN.Parent = dE
     dN.BackgroundColor3 = dp(58, 69, 80)
@@ -185,691 +375,757 @@ function WoofUIModule:Initialize()
     dO.Name = "TabHolderCorner"
     dO.Parent = dN
 
-    -- 自动调整滚动
     dL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         dK.CanvasSize = dn(0, 0, 0, dL.AbsoluteContentSize.Y + 12)
     end)
+
+    -- 切换可见性按钮
+    local toggleBtn = dq("TextButton")
+    toggleBtn.Name = "ToggleVisibilityButton"
+    toggleBtn.Parent = dD
+    toggleBtn.BackgroundColor3 = dp(58, 69, 80)  
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Size = dn(0, 60, 0, 27)            
+    toggleBtn.Position = dn(1, -68, 0, 2)         
+    toggleBtn.AnchorPoint = Vector2.new(1, 0)
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.Text = "≡"
+    toggleBtn.TextColor3 = dp(255, 255, 255)
+    toggleBtn.TextSize = 20
+    toggleBtn.TextScaled = false
+    toggleBtn.ZIndex = 20
+
+    local toggleCorner = dq("UICorner")
+    toggleCorner.CornerRadius = dm(0, 6)
+    toggleCorner.Parent = toggleBtn
+
+    addButtonFeedback(toggleBtn, dp(58,69,80))
+
+    local uiVisible = true
+    toggleBtn.MouseButton1Click:Connect(function()
+        uiVisible = not uiVisible
+        dE.Visible = uiVisible  
+    end)
+
+    return dD, dE, dK, dN, dG
 end
 
--- 切换标签页
-function WoofUIModule:SwitchTab(tab)
-    if currentTab and currentTab[2] and currentTab[2].Glow then
-        dv:Tween({Transparency = 1}, currentTab[2].Glow):Play()
-    end
-    if tab and tab[2] and tab[2].Glow then
-        dv:Tween({Transparency = 0}, tab[2].Glow):Play()
-    end
-    if currentTab and currentTab[1] then
-        currentTab[1].Visible = false
-    end
-    if tab and tab[1] then
-        tab[1].Visible = true
-    end
-    currentTab = tab
-end
+-- 创建Tab函数
+function library:CreateTab(dZ)
+    local d_ = dq("TextButton")
+    local e0 = dq("UICorner")
+    local e1 = dq("Frame")
+    local e2 = dq("UICorner")
+    local e3 = dq("UIGradient")
+    local e4 = dq("ScrollingFrame")
+    local e5 = dq("UIPadding")
+    local e6 = dq("UIListLayout")
 
--- 创建标签页
-function WoofUIModule:CreateTab(tabName)
-    if not dD then
-        self:Initialize()
-    end
-    
-    local tabButton = dq("TextButton")
-    local buttonCorner = dq("UICorner")
-    local glow = dq("Frame")
-    local glowCorner = dq("UICorner")
-    local glowGradient = dq("UIGradient")
-    local tabFrame = dq("ScrollingFrame")
-    local tabPadding = dq("UIPadding")
-    local tabLayout = dq("UIListLayout")
+    d_.Name = "TabButton"
+    d_.Parent = dK
+    d_.BackgroundColor3 = dp(52, 62, 72)
+    d_.BorderSizePixel = 0
+    d_.Size = dn(0, 94, 0, 28)
+    d_.AutoButtonColor = false
+    d_.Font = Enum.Font.GothamSemibold
+    d_.Text = dZ
+    d_.TextColor3 = dp(255, 255, 255)
+    d_.TextSize = 14.000
 
-    -- 标签按钮
-    tabButton.Name = "TabButton"
-    tabButton.Parent = dK
-    tabButton.BackgroundColor3 = dp(52, 62, 72)
-    tabButton.BorderSizePixel = 0
-    tabButton.Size = dn(0, 94, 0, 28)
-    tabButton.AutoButtonColor = false
-    tabButton.Font = Enum.Font.GothamSemibold
-    tabButton.Text = tabName
-    tabButton.TextColor3 = dp(255, 255, 255)
-    tabButton.TextSize = 14.000
+    e0.CornerRadius = dm(0, 6)
+    e0.Name = "TabButtonCorner"
+    e0.Parent = d_
 
-    buttonCorner.CornerRadius = dm(0, 6)
-    buttonCorner.Name = "TabButtonCorner"
-    buttonCorner.Parent = tabButton
+    e1.Name = "Glow"
+    e1.Parent = d_
+    e1.BackgroundColor3 = dp(255, 255, 255)
+    e1.BorderSizePixel = 0
+    e1.Position = dn(0, 0, 0.928571463, 0)
+    e1.Size = dn(0, 94, 0, 2)
+    e1.Transparency = 1
 
-    -- 高亮
-    glow.Name = "Glow"
-    glow.Parent = tabButton
-    glow.BackgroundColor3 = dp(255, 255, 255)
-    glow.BorderSizePixel = 0
-    glow.Position = dn(0, 0, 0.928571463, 0)
-    glow.Size = dn(0, 94, 0, 2)
-    glow.Transparency = 1
+    e2.CornerRadius = dm(0, 6)
+    e2.Name = "GlowCorner"
+    e2.Parent = e1
 
-    glowCorner.CornerRadius = dm(0, 6)
-    glowCorner.Name = "GlowCorner"
-    glowCorner.Parent = glow
-
-    glowGradient.Color = ColorSequence.new {
+    e3.Color = ColorSequence.new {
         ColorSequenceKeypoint.new(0.00, dp(52, 62, 72)),
         ColorSequenceKeypoint.new(0.50, dp(255, 255, 255)),
         ColorSequenceKeypoint.new(1.00, dp(52, 62, 72))
     }
-    glowGradient.Name = "GlowGradient"
-    glowGradient.Parent = glow
+    e3.Name = "GlowGradient"
+    e3.Parent = e1
 
-    -- 标签内容区
-    tabFrame.Name = "Tab"
-    tabFrame.Parent = dN
-    tabFrame.Active = true
-    tabFrame.BackgroundColor3 = dp(255, 255, 255)
-    tabFrame.BackgroundTransparency = 1.000
-    tabFrame.BorderSizePixel = 0
-    tabFrame.Size = dn(0, 324, 0, 238)
-    tabFrame.ScrollBarThickness = 0
-    tabFrame.Visible = false
+    e4.Name = "Tab"
+    e4.Parent = dN
+    e4.Active = true
+    e4.BackgroundColor3 = dp(255, 255, 255)
+    e4.BackgroundTransparency = 1.000
+    e4.BorderSizePixel = 0
+    e4.Size = dn(0, 324, 0, 238)
+    e4.ScrollBarThickness = 0
+    e4.Visible = false
 
-    -- 如果是第一个标签，设为激活状态
-    if not currentTab then
-        currentTab = {tabFrame, tabButton}
-        glow.Transparency = 0
-        tabFrame.Visible = true
+    if library.currentTab == nil then
+        library.currentTab = {e4, d_}
+        e1.Transparency = 0
+        e4.Visible = true
     end
 
-    tabPadding.Name = "TabPadding"
-    tabPadding.Parent = tabFrame
-    tabPadding.PaddingTop = dm(0, 6)
+    e5.Name = "TabPadding"
+    e5.Parent = e4
+    e5.PaddingTop = dm(0, 6)
 
-    tabLayout.Name = "TabLayout"
-    tabLayout.Parent = tabFrame
-    tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tabLayout.Padding = dm(0, 5)
+    e6.Name = "TabLayout"
+    e6.Parent = e4
+    e6.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    e6.SortOrder = Enum.SortOrder.LayoutOrder
+    e6.Padding = dm(0, 5)
 
-    -- 自动调整滚动
-    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        tabFrame.CanvasSize = dn(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 12)
+    e6:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        e4.CanvasSize = dn(0, 0, 0, e6.AbsoluteContentSize.Y + 12)
     end)
 
-    -- 点击切换标签
-    tabButton.MouseButton1Click:Connect(function()
-        self:SwitchTab({tabFrame, tabButton})
+    d_.MouseButton1Click:Connect(function()
+        dv:SwitchTab({e4, d_})
     end)
 
-    -- 按钮反馈
-    addButtonFeedback(tabButton, dp(52, 62, 72))
+    addButtonFeedback(d_, dp(52,62,72))
 
-    -- 标签页方法
-    local tabMethods = {}
-    
-    function tabMethods:NewSeparator()
-        local sep = dq("Frame")
-        sep.Transparency = 1
-        sep.Size = dn(0, 0, 0, 0)
-        sep.BorderSizePixel = 0
-        sep.Parent = tabFrame
+    local e7 = {}
+
+    function e7:NewSeparator()
+        local e8 = dq("Frame")
+        e8.Transparency = 1
+        e8.Size = dn(0, 0, 0, 0)
+        e8.BorderSizePixel = 0
+        e8.Parent = e4
     end
 
-    function tabMethods:NewButton(config)
-        local btn = dq("TextButton")
-        local corner = dq("UICorner")
-        
-        btn.Name = "BtnModule"
-        btn.Parent = tabFrame
-        btn.BackgroundColor3 = dp(52, 62, 72)
-        btn.BorderSizePixel = 0
-        btn.Size = dn(0, 312, 0, 28)
-        btn.AutoButtonColor = false
-        btn.Font = Enum.Font.GothamSemibold
-        btn.Text = "  " .. (config.Title or "Button")
-        btn.TextColor3 = dp(255, 255, 255)
-        btn.TextSize = 14.000
-        btn.TextXAlignment = Enum.TextXAlignment.Left
-        
-        corner.CornerRadius = dm(0, 6)
-        corner.Name = "BtnModuleCorner"
-        corner.Parent = btn
-        
-        if config.Callback and type(config.Callback) == "function" then
-            btn.MouseButton1Click:Connect(config.Callback)
-        end
-        
-        addButtonFeedback(btn, dp(52, 62, 72))
-        
-        return btn
+    function e7:NewButton(e9, ea)
+        ea = ea or dr
+        local eb = dq("TextButton")
+        local ec = dq("UICorner")
+        eb.Name = "BtnModule"
+        eb.Parent = e4
+        eb.BackgroundColor3 = dp(52, 62, 72)
+        eb.BorderSizePixel = 0
+        eb.Size = dn(0, 312, 0, 28)
+        eb.AutoButtonColor = false
+        eb.Font = Enum.Font.GothamSemibold
+        eb.Text = "  " .. e9
+        eb.TextColor3 = dp(255, 255, 255)
+        eb.TextSize = 14.000
+        eb.TextXAlignment = Enum.TextXAlignment.Left
+        ec.CornerRadius = dm(0, 6)
+        ec.Name = "BtnModuleCorner"
+        ec.Parent = eb
+        eb.MouseButton1Click:Connect(ea)
+        addButtonFeedback(eb, dp(52,62,72))
     end
 
-    function tabMethods:Toggle(config)
-        local toggleBtn = dq("TextButton")
-        local toggleCorner = dq("UICorner")
-        local offStatus = dq("Frame")
-        local offGradient = dq("UIGradient")
-        local offCorner = dq("UICorner")
-        local onStatus = dq("Frame")
-        local onCorner = dq("UICorner")
-        local onGradient = dq("UIGradient")
-        
-        local flagName = config.Flag or config.Title
-        local state = config.Value or false
-        
-        -- 创建标志
-        library.flags[flagName] = {
-            State = state,
-            Callback = config.Callback or dr,
-            SetState = function(self, newState)
-                newState = (newState ~= nil) and newState or not self.State
-                self.State = newState
-                library.flags[flagName].State = newState
-                
-                if config.Callback then
-                    task.spawn(function() config.Callback(newState) end)
-                end
-                
-                dv:Tween({Transparency = newState and 1 or 0}, offStatus):Play()
-                dv:Tween({Transparency = newState and 0 or 1}, onStatus):Play()
+    function e7:NewToggle(e9, du, ed, ea)
+        ea = ea or dr
+        ed = ed or false
+        local ee = dq("TextButton")
+        local ef = dq("UICorner")
+        local eg = dq("Frame")
+        local eh = dq("UIGradient")
+        local ei = dq("UICorner")
+        local ej = dq("Frame")
+        local ek = dq("UICorner")
+        local el = dq("UIGradient")
+
+        library.flags[du or e9] = {
+            State = false,
+            Callback = ea,
+            SetState = function(self, be)
+                be = (be ~= nil) and be or not library.flags:GetState(du)
+                library.flags[du].State = be
+                task.spawn(function() library.flags[du].Callback(be) end)
+                dv:Tween({Transparency = be and 1 or 0}, eg):Play()
+                dv:Tween({Transparency = be and 0 or 1}, ej):Play()
             end
         }
-        
-        toggleBtn.Name = "ToggleModule"
-        toggleBtn.Parent = tabFrame
-        toggleBtn.BackgroundColor3 = dp(52, 62, 72)
-        toggleBtn.BorderSizePixel = 0
-        toggleBtn.Size = dn(0, 312, 0, 28)
-        toggleBtn.AutoButtonColor = false
-        toggleBtn.Font = Enum.Font.GothamSemibold
-        toggleBtn.Text = "  " .. config.Title
-        toggleBtn.TextColor3 = dp(255, 255, 255)
-        toggleBtn.TextSize = 14.000
-        toggleBtn.TextXAlignment = Enum.TextXAlignment.Left
-        
-        toggleCorner.CornerRadius = dm(0, 6)
-        toggleCorner.Name = "ToggleModuleCorner"
-        toggleCorner.Parent = toggleBtn
-        
-        -- 关闭状态
-        offStatus.Name = "OffStatus"
-        offStatus.Parent = toggleBtn
-        offStatus.BackgroundColor3 = dp(255, 255, 255)
-        offStatus.BorderSizePixel = 0
-        offStatus.Position = dn(0.878205061, 0, 0.178571433, 0)
-        offStatus.Size = dn(0, 34, 0, 18)
-        
-        offGradient.Color = ColorSequence.new {
+
+        ee.Name = "ToggleModule"
+        ee.Parent = e4
+        ee.BackgroundColor3 = dp(52, 62, 72)
+        ee.BorderSizePixel = 0
+        ee.Size = dn(0, 312, 0, 28)
+        ee.AutoButtonColor = false
+        ee.Font = Enum.Font.GothamSemibold
+        ee.Text = "  " .. e9
+        ee.TextColor3 = dp(255, 255, 255)
+        ee.TextSize = 14.000
+        ee.TextXAlignment = Enum.TextXAlignment.Left
+
+        ef.CornerRadius = dm(0, 6)
+        ef.Name = "ToggleModuleCorner"
+        ef.Parent = ee
+
+        eg.Name = "OffStatus"
+        eg.Parent = ee
+        eg.BackgroundColor3 = dp(255, 255, 255)
+        eg.BorderSizePixel = 0
+        eg.Position = dn(0.878205061, 0, 0.178571433, 0)
+        eg.Size = dn(0, 34, 0, 18)
+
+        eh.Color = ColorSequence.new {
             ColorSequenceKeypoint.new(0.00, dp(255, 83, 83)),
             ColorSequenceKeypoint.new(0.15, dp(255, 83, 83)),
             ColorSequenceKeypoint.new(0.62, dp(52, 62, 72)),
             ColorSequenceKeypoint.new(1.00, dp(52, 62, 72))
         }
-        offGradient.Rotation = 300
-        offGradient.Name = "OffGrad"
-        offGradient.Parent = offStatus
-        
-        offCorner.CornerRadius = dm(0, 4)
-        offCorner.Name = "OffStatusCorner"
-        offCorner.Parent = offStatus
-        
-        -- 开启状态
-        onStatus.Name = "OnStatus"
-        onStatus.Parent = toggleBtn
-        onStatus.BackgroundColor3 = dp(255, 255, 255)
-        onStatus.BackgroundTransparency = 1.000
-        onStatus.BorderSizePixel = 0
-        onStatus.Position = dn(0.878205121, 0, 0.178571433, 0)
-        onStatus.Size = dn(0, 34, 0, 18)
-        onStatus.Transparency = 1
-        
-        onCorner.CornerRadius = dm(0, 4)
-        onCorner.Name = "OnStatusCorner"
-        onCorner.Parent = onStatus
-        
-        onGradient.Color = ColorSequence.new {
+        eh.Rotation = 300
+        eh.Name = "OffGrad"
+        eh.Parent = eg
+
+        ei.CornerRadius = dm(0, 4)
+        ei.Name = "OffStatusCorner"
+        ei.Parent = eg
+
+        ej.Name = "OnStatus"
+        ej.Parent = ee
+        ej.BackgroundColor3 = dp(255, 255, 255)
+        ej.BackgroundTransparency = 1.000
+        ej.BorderSizePixel = 0
+        ej.Position = dn(0.878205121, 0, 0.178571433, 0)
+        ej.Size = dn(0, 34, 0, 18)
+        ej.Transparency = 1
+
+        ek.CornerRadius = dm(0, 4)
+        ek.Name = "OnStatusCorner"
+        ek.Parent = ej
+
+        el.Color = ColorSequence.new {
             ColorSequenceKeypoint.new(0.00, dp(52, 62, 72)),
             ColorSequenceKeypoint.new(0.38, dp(48, 57, 67)),
             ColorSequenceKeypoint.new(1.00, dp(53, 255, 134))
         }
-        onGradient.Rotation = 300
-        onGradient.Name = "OnGrad"
-        onGradient.Parent = onStatus
-        
-        -- 点击事件
-        toggleBtn.MouseButton1Click:Connect(function()
-            library.flags[flagName]:SetState()
+        el.Rotation = 300
+        el.Name = "OnGrad"
+        el.Parent = ej
+
+        ee.MouseButton1Click:Connect(function()
+            library.flags[du or e9]:SetState()
         end)
-        
-        -- 设置初始状态
-        if state then
-            library.flags[flagName]:SetState(true)
+
+        if ed then
+            library.flags[du or e9]:SetState(ed)
         end
-        
-        addButtonFeedback(toggleBtn, dp(52, 62, 72))
-        
-        return {
-            Set = function(value)
-                library.flags[flagName]:SetState(value)
-            end,
-            Get = function()
-                return library.flags[flagName].State
-            end
-        }
+
+        addButtonFeedback(ee, dp(52,62,72))
     end
 
-    function tabMethods:Button(config)
-        return tabMethods.NewButton(tabMethods, config)
+    function e7:NewBind(e9, em, ea)
+        em = Enum.KeyCode[em]
+        local en = {
+            Return = true, Space = true, Tab = true, Backquote = true,
+            CapsLock = true, Escape = true, Unknown = true
+        }
+        local eo = {
+            RightControl = "Right Ctrl", LeftControl = "Left Ctrl",
+            LeftShift = "Left Shift", RightShift = "Right Shift",
+            Semicolon = ";", Quote = '"', LeftBracket = "[", RightBracket = "]",
+            Equals = "=", Minus = "-", RightAlt = "Right Alt", LeftAlt = "Left Alt"
+        }
+        local ep = em
+        local eq = em and (eo[em.Name] or em.Name) or "None"
+
+        local er = dq("TextButton")
+        local es = dq("UICorner")
+        local et = dq("TextButton")
+        local eu = dq("UICorner")
+
+        er.Name = "KeybindModule"
+        er.Parent = e4
+        er.BackgroundColor3 = dp(52, 62, 72)
+        er.BorderSizePixel = 0
+        er.Size = dn(0, 312, 0, 28)
+        er.AutoButtonColor = false
+        er.Font = Enum.Font.GothamSemibold
+        er.Text = "  " .. e9
+        er.TextColor3 = dp(255, 255, 255)
+        er.TextSize = 14.000
+        er.TextXAlignment = Enum.TextXAlignment.Left
+
+        es.CornerRadius = dm(0, 6)
+        es.Name = "KeybindModuleCorner"
+        es.Parent = er
+
+        et.Name = "KeybindValue"
+        et.Parent = er
+        et.BackgroundColor3 = dp(58, 69, 80)
+        et.BorderSizePixel = 0
+        et.Position = dn(0.75, 0, 0.178571433, 0)
+        et.Size = dn(0, 74, 0, 18)
+        et.AutoButtonColor = false
+        et.Font = Enum.Font.Gotham
+        et.Text = eq
+        et.TextColor3 = dp(255, 255, 255)
+        et.TextSize = 12.000
+
+        eu.CornerRadius = dm(0, 4)
+        eu.Name = "KeybindValueCorner"
+        eu.Parent = et
+
+        b.UserInputService.InputBegan:Connect(function(aJ, aK)
+            if aK then return end
+            if aJ.UserInputType ~= Enum.UserInputType.Keyboard then return end
+            if aJ.KeyCode ~= ep then return end
+            ea(ep.Name)
+        end)
+
+        et.MouseButton1Click:Connect(function()
+            et.Text = "..."
+            wait()
+            local ev, _ = b.UserInputService.InputEnded:Wait()
+            local ex = tostring(ev.KeyCode.Name)
+            if ev.UserInputType ~= Enum.UserInputType.Keyboard then
+                et.Text = eq
+                return
+            end
+            if en[ex] then
+                et.Text = eq
+                return
+            end
+            wait()
+            ep = Enum.KeyCode[ex]
+            et.Text = eo[ex] or ex
+        end)
+
+        addButtonFeedback(er, dp(52,62,72))
+        addButtonFeedback(et, dp(58,69,80))
     end
-    
-    function tabMethods:Slider(config)
-        local sliderBtn = dq("TextButton")
-        local sliderCorner = dq("UICorner")
-        local sliderBar = dq("Frame")
-        local barCorner = dq("UICorner")
-        local sliderPart = dq("Frame")
-        local partCorner = dq("UICorner")
-        local valueBox = dq("TextBox")
-        local valueCorner = dq("UICorner")
-        local addBtn = dq("TextButton")
-        local minusBtn = dq("TextButton")
-        
-        local flagName = config.Flag or config.Title
-        local min = config.Min or 0
-        local max = config.Max or 100
-        local default = config.Default or min
-        local callback = config.Callback or dr
-        
-        library.flags[flagName] = {
-            State = default,
-            SetValue = function(self, value)
-                if value then
-                    value = tonumber(value)
-                    if value then
-                        value = math.clamp(value, min, max)
-                        library.flags[flagName].State = value
-                        valueBox.Text = tostring(math.floor(value))
-                        local percent = (value - min) / (max - min)
-                        sliderPart.Size = dn(percent, 0, 1, 0)
-                        callback(value)
-                    end
+
+    function e7:NewSlider(e9, du, em, ey, ez, eA, ea)
+        em = em or ey
+        ea = ea or dr
+        local eB = dq("TextButton")
+        local eC = dq("UICorner")
+        local eD = dq("Frame")
+        local eE = dq("UICorner")
+        local eF = dq("Frame")
+        local eG = dq("UICorner")
+        local eH = dq("TextBox")
+        local eI = dq("UICorner")
+        local eJ = dq("TextButton")
+        local eK = dq("TextButton")
+
+        library.flags[du] = {
+            State = em,
+            SetValue = function(self, be)
+                if be then
+                    library.flags[du].State = tonumber(be)
+                    eH.Text = tostring(be)
+                    local percent = (be - ey) / (ez - ey)
+                    eF.Size = dn(percent, 0, 1, 0)
+                    ea(tonumber(be))
                 end
             end
         }
-        
-        sliderBtn.Name = "SliderModule"
-        sliderBtn.Parent = tabFrame
-        sliderBtn.BackgroundColor3 = dp(52, 62, 72)
-        sliderBtn.BorderSizePixel = 0
-        sliderBtn.Size = dn(0, 312, 0, 28)
-        sliderBtn.AutoButtonColor = false
-        sliderBtn.Font = Enum.Font.GothamSemibold
-        sliderBtn.Text = "  " .. config.Title
-        sliderBtn.TextColor3 = dp(255, 255, 255)
-        sliderBtn.TextSize = 14.000
-        sliderBtn.TextXAlignment = Enum.TextXAlignment.Left
-        
-        sliderCorner.CornerRadius = dm(0, 6)
-        sliderCorner.Name = "SliderModuleCorner"
-        sliderCorner.Parent = sliderBtn
-        
-        sliderBar.Name = "SliderBar"
-        sliderBar.Parent = sliderBtn
-        sliderBar.BackgroundColor3 = dp(58, 69, 80)
-        sliderBar.BorderSizePixel = 0
-        sliderBar.Position = dn(0.442307681, 0, 0.392857134, 0)
-        sliderBar.Size = dn(0, 108, 0, 6)
-        
-        barCorner.CornerRadius = dm(0, 2)
-        barCorner.Name = "SliderBarCorner"
-        barCorner.Parent = sliderBar
-        
-        sliderPart.Name = "SliderPart"
-        sliderPart.Parent = sliderBar
-        sliderPart.BackgroundColor3 = dp(255, 255, 255)
-        sliderPart.BorderSizePixel = 0
-        sliderPart.Size = dn(0, 0, 0, 6)
-        
-        partCorner.CornerRadius = dm(0, 2)
-        partCorner.Name = "SliderPartCorner"
-        partCorner.Parent = sliderPart
-        
-        valueBox.Name = "SliderValue"
-        valueBox.Parent = sliderBtn
-        valueBox.BackgroundColor3 = dp(58, 69, 80)
-        valueBox.BorderSizePixel = 0
-        valueBox.Position = dn(0.884615362, 0, 0.178571433, 0)
-        valueBox.Size = dn(0, 32, 0, 18)
-        valueBox.Font = Enum.Font.Gotham
-        valueBox.Text = tostring(default)
-        valueBox.TextColor3 = dp(255, 255, 255)
-        valueBox.TextSize = 12.000
-        
-        valueCorner.CornerRadius = dm(0, 4)
-        valueCorner.Name = "SliderValueCorner"
-        valueCorner.Parent = valueBox
-        
-        addBtn.Name = "AddSlider"
-        addBtn.Parent = sliderBtn
-        addBtn.BackgroundColor3 = dp(255, 255, 255)
-        addBtn.BackgroundTransparency = 1.000
-        addBtn.BorderSizePixel = 0
-        addBtn.Position = dn(0.807692289, 0, 0.178571433, 0)
-        addBtn.Size = dn(0, 18, 0, 18)
-        addBtn.Font = Enum.Font.Gotham
-        addBtn.Text = "+"
-        addBtn.TextColor3 = dp(255, 255, 255)
-        addBtn.TextSize = 18.000
-        
-        minusBtn.Name = "MinusSlider"
-        minusBtn.Parent = sliderBtn
-        minusBtn.BackgroundColor3 = dp(255, 255, 255)
-        minusBtn.BackgroundTransparency = 1.000
-        minusBtn.BorderSizePixel = 0
-        minusBtn.Position = dn(0.365384609, 0, 0.178571433, 0)
-        minusBtn.Size = dn(0, 18, 0, 18)
-        minusBtn.Font = Enum.Font.Gotham
-        minusBtn.Text = "-"
-        minusBtn.TextColor3 = dp(255, 255, 255)
-        minusBtn.TextSize = 18.000
-        
-        -- 按钮事件
-        minusBtn.MouseButton1Click:Connect(function()
-            local value = library.flags[flagName].State
-            value = math.clamp(value - 1, min, max)
-            library.flags[flagName]:SetValue(value)
+
+        eB.Name = "SliderModule"
+        eB.Parent = e4
+        eB.BackgroundColor3 = dp(52, 62, 72)
+        eB.BorderSizePixel = 0
+        eB.Position = dn(0, 0, -0.140425533, 0)
+        eB.Size = dn(0, 312, 0, 28)
+        eB.AutoButtonColor = false
+        eB.Font = Enum.Font.GothamSemibold
+        eB.Text = "  " .. e9
+        eB.TextColor3 = dp(255, 255, 255)
+        eB.TextSize = 14.000
+        eB.TextXAlignment = Enum.TextXAlignment.Left
+
+        eC.CornerRadius = dm(0, 6)
+        eC.Name = "SliderModuleCorner"
+        eC.Parent = eB
+
+        eD.Name = "SliderBar"
+        eD.Parent = eB
+        eD.BackgroundColor3 = dp(58, 69, 80)
+        eD.BorderSizePixel = 0
+        eD.Position = dn(0.442307681, 0, 0.392857134, 0)
+        eD.Size = dn(0, 108, 0, 6)
+
+        eE.CornerRadius = dm(0, 2)
+        eE.Name = "SliderBarCorner"
+        eE.Parent = eD
+
+        eF.Name = "SliderPart"
+        eF.Parent = eD
+        eF.BackgroundColor3 = dp(255, 255, 255)
+        eF.BorderSizePixel = 0
+        eF.Size = dn(0, 0, 0, 6)
+
+        eG.CornerRadius = dm(0, 2)
+        eG.Name = "SliderPartCorner"
+        eG.Parent = eF
+
+        eH.Name = "SliderValue"
+        eH.Parent = eB
+        eH.BackgroundColor3 = dp(58, 69, 80)
+        eH.BorderSizePixel = 0
+        eH.Position = dn(0.884615362, 0, 0.178571433, 0)
+        eH.Size = dn(0, 32, 0, 18)
+        eH.Font = Enum.Font.Gotham
+        eH.Text = em or ey
+        eH.TextColor3 = dp(255, 255, 255)
+        eH.TextSize = 12.000
+
+        eI.CornerRadius = dm(0, 4)
+        eI.Name = "SliderValueCorner"
+        eI.Parent = eH
+
+        eJ.Name = "AddSlider"
+        eJ.Parent = eB
+        eJ.BackgroundColor3 = dp(255, 255, 255)
+        eJ.BackgroundTransparency = 1.000
+        eJ.BorderSizePixel = 0
+        eJ.Position = dn(0.807692289, 0, 0.178571433, 0)
+        eJ.Size = dn(0, 18, 0, 18)
+        eJ.Font = Enum.Font.Gotham
+        eJ.Text = "+"
+        eJ.TextColor3 = dp(255, 255, 255)
+        eJ.TextSize = 18.000
+
+        eK.Name = "MinusSlider"
+        eK.Parent = eB
+        eK.BackgroundColor3 = dp(255, 255, 255)
+        eK.BackgroundTransparency = 1.000
+        eK.BorderSizePixel = 0
+        eK.Position = dn(0.365384609, 0, 0.178571433, 0)
+        eK.Size = dn(0, 18, 0, 18)
+        eK.Font = Enum.Font.Gotham
+        eK.Text = "-"
+        eK.TextColor3 = dp(255, 255, 255)
+        eK.TextSize = 18.000
+
+        eK.MouseButton1Click:Connect(function()
+            local eM = library.flags:GetState(du)
+            eM = math.clamp(eM - 1, ey, ez)
+            library.flags[du]:SetValue(eM)
         end)
-        
-        addBtn.MouseButton1Click:Connect(function()
-            local value = library.flags[flagName].State
-            value = math.clamp(value + 1, min, max)
-            library.flags[flagName]:SetValue(value)
+
+        eJ.MouseButton1Click:Connect(function()
+            local eM = library.flags:GetState(du)
+            eM = math.clamp(eM + 1, ey, ez)
+            library.flags[du]:SetValue(eM)
         end)
-        
-        -- 设置初始值
-        library.flags[flagName]:SetValue(default)
-        
-        -- 滑块拖拽
-        local dragging = false
+
+        library.flags[du]:SetValue(em)
+
+        local dS, eN, eO = false, false, {[""] = true, ["-"] = true}
         local function updateSliderFromInput(input)
             local pos = input.Position
-            local percent = (pos.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
+            local percent = (pos.X - eD.AbsolutePosition.X) / eD.AbsoluteSize.X
             percent = math.clamp(percent, 0, 1)
-            local newValue = min + (max - min) * percent
-            library.flags[flagName]:SetValue(newValue)
+            local newValue
+            if eA then
+                newValue = tonumber(string.format("%.1f", tostring(ey + (ez - ey) * percent)))
+            else
+                newValue = math.floor(ey + (ez - ey) * percent)
+            end
+            library.flags[du]:SetValue(newValue)
         end
-        
-        sliderBar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                updateSliderFromInput(input)
-                dragging = true
+
+        eD.InputBegan:Connect(function(dX)
+            if dX.UserInputType == Enum.UserInputType.MouseButton1 or dX.UserInputType == Enum.UserInputType.Touch then
+                updateSliderFromInput(dX)
+                dS = true
             end
         end)
-        
-        b.UserInputService.InputEnded:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-                dragging = false
+
+        b.UserInputService.InputEnded:Connect(function(dX)
+            if dS and (dX.UserInputType == Enum.UserInputType.MouseButton1 or dX.UserInputType == Enum.UserInputType.Touch) then
+                dS = false
             end
         end)
-        
-        b.UserInputService.InputChanged:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                updateSliderFromInput(input)
+
+        b.UserInputService.InputChanged:Connect(function(dX)
+            if dS and (dX.UserInputType == Enum.UserInputType.MouseMovement or dX.UserInputType == Enum.UserInputType.Touch) then
+                updateSliderFromInput(dX)
             end
         end)
-        
-        -- 文本框输入
-        local typing = false
-        valueBox.Focused:Connect(function()
-            typing = true
+
+        eH.Focused:Connect(function()
+            eN = true
         end)
-        
-        valueBox.FocusLost:Connect(function()
-            typing = false
-            if valueBox.Text == "" then
-                library.flags[flagName]:SetValue(default)
+
+        eH.FocusLost:Connect(function()
+            eN = false
+            if eH.Text == "" then
+                library.flags[du]:SetValue(em)
             end
         end)
-        
-        valueBox:GetPropertyChangedSignal("Text"):Connect(function()
-            if not typing then return end
-            valueBox.Text = valueBox.Text:gsub("%D+", "")
-            local text = valueBox.Text
-            if text ~= "" and tonumber(text) then
-                library.flags[flagName]:SetValue(tonumber(text))
+
+        eH:GetPropertyChangedSignal("Text"):Connect(function()
+            if not eN then return end
+            eH.Text = eH.Text:gsub("%D+", "")
+            local e9 = eH.Text
+            if not tonumber(e9) then
+                eH.Text = eH.Text:gsub("%D+", "")
+            elseif not eO[e9] then
+                if tonumber(e9) > ez then
+                    e9 = ez
+                    eH.Text = tostring(ez)
+                end
+                library.flags[du]:SetValue(tonumber(e9))
             end
         end)
-        
-        addButtonFeedback(sliderBtn, dp(52, 62, 72))
-        addButtonFeedback(addBtn, dp(255, 255, 255))
-        addButtonFeedback(minusBtn, dp(255, 255, 255))
-        
-        return {
-            Set = function(value)
-                library.flags[flagName]:SetValue(value)
-            end,
-            Get = function()
-                return library.flags[flagName].State
-            end
-        }
+
+        addButtonFeedback(eB, dp(52,62,72))
+        addButtonFeedback(eJ, dp(255,255,255))
+        addButtonFeedback(eK, dp(255,255,255))
     end
 
-    function tabMethods:Dropdown(config)
-        local dropdownBtn = dq("TextButton")
-        local dropdownCorner = dq("UICorner")
-        local dropdownText = dq("TextBox")
-        local openBtn = dq("TextButton")
-        local dropdownBottom = dq("Frame")
-        local bottomCorner = dq("UICorner")
-        local bottomLayout = dq("UIListLayout")
-        local bottomPadding = dq("UIPadding")
-        
-        local flagName = config.Flag or config.Title
-        local options = config.Options or {}
-        local callback = config.Callback or dr
-        
-        library.flags[flagName] = { 
-            State = options[1] or "",
-            SetOptions = function(self, newOptions)
-                options = newOptions
-                -- 清空现有选项
-                for _, child in ipairs(dropdownBottom:GetChildren()) do
+    function e7:NewDropdown(e9, du, eP, ea)
+        ea = ea or dr
+        library.flags[du] = { State = eP[1] }
+        local eQ = dq("TextButton")
+        local eR = dq("UICorner")
+        local eS = dq("TextBox")
+        local eT = dq("TextButton")
+        local eU = dq("TextButton")
+        local eV = dq("UICorner")
+        local eW = dq("UIListLayout")
+        local eX = dq("UIPadding")
+
+        eQ.Name = "DropdownModule"
+        eQ.Parent = e4
+        eQ.BackgroundColor3 = dp(52, 62, 72)
+        eQ.BorderSizePixel = 0
+        eQ.Size = dn(0, 312, 0, 28)
+        eQ.AutoButtonColor = false
+        eQ.Font = Enum.Font.GothamSemibold
+        eQ.Text = ""
+        eQ.TextColor3 = dp(255, 255, 255)
+        eQ.TextSize = 14.000
+        eQ.TextXAlignment = Enum.TextXAlignment.Left
+
+        eR.CornerRadius = dm(0, 6)
+        eR.Name = "DropdownModuleCorner"
+        eR.Parent = eQ
+
+        eS.Name = "DropdownText"
+        eS.Parent = eQ
+        eS.BackgroundColor3 = dp(255, 255, 255)
+        eS.BackgroundTransparency = 1.000
+        eS.Position = dn(0.025641026, 0, 0, 0)
+        eS.Size = dn(0, 192, 0, 28)
+        eS.Font = Enum.Font.GothamSemibold
+        eS.PlaceholderText = e9
+        eS.PlaceholderColor3 = dp(255, 255, 255)
+        eS.TextColor3 = dp(255, 255, 255)
+        eS.TextSize = 14.000
+        eS.TextXAlignment = Enum.TextXAlignment.Left
+        eS.Text = ""
+
+        eT.Name = "OpenDropdown"
+        eT.Parent = eQ
+        eT.BackgroundColor3 = dp(255, 255, 255)
+        eT.BackgroundTransparency = 1.000
+        eT.BorderSizePixel = 0
+        eT.Position = dn(0.907051265, 0, 0.178571433, 0)
+        eT.Size = dn(0, 18, 0, 18)
+        eT.Font = Enum.Font.Gotham
+        eT.Text = "+"
+        eT.TextColor3 = dp(255, 255, 255)
+        eT.TextSize = 22.000
+
+        eU.Name = "DropdownBottom"
+        eU.Parent = e4
+        eU.BackgroundColor3 = dp(52, 62, 72)
+        eU.BorderSizePixel = 0
+        eU.ClipsDescendants = true
+        eU.Position = dn(0.0185185187, 0, 0.206896558, 0)
+        eU.Size = dn(0, 312, 0, 0)
+        eU.AutoButtonColor = false
+        eU.Font = Enum.Font.GothamSemibold
+        eU.Text = ""
+        eU.TextColor3 = dp(255, 255, 255)
+        eU.TextSize = 14.000
+        eU.TextXAlignment = Enum.TextXAlignment.Left
+        eU.Visible = false
+
+        eV.CornerRadius = dm(0, 6)
+        eV.Name = "DropdownBottomCorner"
+        eV.Parent = eU
+
+        eW.Name = "DropdownBottomLayout"
+        eW.Parent = eU
+        eW.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        eW.SortOrder = Enum.SortOrder.LayoutOrder
+        eW.Padding = dm(0, 6)
+
+        eX.Name = "DropdownBottomPadding"
+        eX.Parent = eU
+        eX.PaddingTop = dm(0, 6)
+
+        local eY = false
+        eW:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if not eY then return end
+            dv:Tween({Size = dn(0, 312, 0, eW.AbsoluteContentSize.Y + 12)}, eU, 0.1):Play()
+        end)
+
+        local function showAllOptions()
+            for _, child in ipairs(eU:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.Visible = true
+                end
+            end
+        end
+
+        local function filterOptions(filterText)
+            if filterText == "" then
+                showAllOptions()
+            else
+                for _, child in ipairs(eU:GetChildren()) do
                     if child:IsA("TextButton") then
-                        child:Destroy()
+                        if child.Name:lower():sub(1, #filterText) == filterText:lower() then
+                            child.Visible = true
+                        else
+                            child.Visible = false
+                        end
                     end
                 end
-                -- 添加新选项
-                for _, opt in ipairs(newOptions) do
-                    self:AddOption(opt)
-                end
-            end,
-            AddOption = function(self, optName)
-                local btn = dq("TextButton")
-                local corner = dq("UICorner")
-                btn.Name = optName
-                btn.Parent = dropdownBottom
-                btn.BackgroundColor3 = dp(58, 69, 80)
-                btn.BorderSizePixel = 0
-                btn.Size = dn(0, 300, 0, 28)
-                btn.AutoButtonColor = false
-                btn.Font = Enum.Font.GothamSemibold
-                btn.Text = optName
-                btn.TextColor3 = dp(255, 255, 255)
-                btn.TextSize = 14.000
-                corner.CornerRadius = dm(0, 6)
-                corner.Name = "OptionCorner"
-                corner.Parent = btn
-                btn.MouseButton1Click:Connect(function()
-                    dropdownText.PlaceholderText = optName
-                    dropdownText.Text = ""
-                    library.flags[flagName].State = optName
-                    callback(optName)
-                    if isOpen then
-                        toggleDropdown()
-                    end
+            end
+        end
+
+        local function toggleDropdown()
+            eY = not eY
+            if eY then
+                eU.Visible = true
+                showAllOptions()
+            else
+                task.spawn(function()
+                    task.wait(0.35)
+                    eU.Visible = false
                 end)
-                addButtonFeedback(btn, dp(58, 69, 80))
-            end,
-            RemoveOption = function(self, optName)
-                local child = dropdownBottom:FindFirstChild(optName)
-                if child then
+            end
+            eT.Text = eY and "-" or "+"
+            dv:Tween({Size = dn(0, 312, 0, eY and eW.AbsoluteContentSize.Y + 12 or 0)}, eU, 0.35):Play()
+        end
+
+        eT.MouseButton1Click:Connect(toggleDropdown)
+
+        eS.Focused:Connect(function()
+            if eY then return end
+            toggleDropdown()
+        end)
+
+        eS:GetPropertyChangedSignal("Text"):Connect(function()
+            filterOptions(eS.Text)
+        end)
+
+        library.flags[du].SetOptions = function(self, newOptions)
+            library.flags[du]:ClearOptions()
+            for _, opt in ipairs(newOptions) do
+                library.flags[du]:AddOption(opt)
+            end
+        end
+
+        library.flags[du].ClearOptions = function(self)
+            for _, child in ipairs(eU:GetChildren()) do
+                if child:IsA("TextButton") then
                     child:Destroy()
                 end
             end
-        }
-        
-        dropdownBtn.Name = "DropdownModule"
-        dropdownBtn.Parent = tabFrame
-        dropdownBtn.BackgroundColor3 = dp(52, 62, 72)
-        dropdownBtn.BorderSizePixel = 0
-        dropdownBtn.Size = dn(0, 312, 0, 28)
-        dropdownBtn.AutoButtonColor = false
-        dropdownBtn.Font = Enum.Font.GothamSemibold
-        dropdownBtn.Text = ""
-        dropdownBtn.TextColor3 = dp(255, 255, 255)
-        dropdownBtn.TextSize = 14.000
-        dropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
-        
-        dropdownCorner.CornerRadius = dm(0, 6)
-        dropdownCorner.Name = "DropdownModuleCorner"
-        dropdownCorner.Parent = dropdownBtn
-        
-        dropdownText.Name = "DropdownText"
-        dropdownText.Parent = dropdownBtn
-        dropdownText.BackgroundColor3 = dp(255, 255, 255)
-        dropdownText.BackgroundTransparency = 1.000
-        dropdownText.Position = dn(0.025641026, 0, 0, 0)
-        dropdownText.Size = dn(0, 192, 0, 28)
-        dropdownText.Font = Enum.Font.GothamSemibold
-        dropdownText.PlaceholderText = config.Title
-        dropdownText.PlaceholderColor3 = dp(255, 255, 255)
-        dropdownText.TextColor3 = dp(255, 255, 255)
-        dropdownText.TextSize = 14.000
-        dropdownText.TextXAlignment = Enum.TextXAlignment.Left
-        dropdownText.Text = ""
-        
-        openBtn.Name = "OpenDropdown"
-        openBtn.Parent = dropdownBtn
-        openBtn.BackgroundColor3 = dp(255, 255, 255)
-        openBtn.BackgroundTransparency = 1.000
-        openBtn.BorderSizePixel = 0
-        openBtn.Position = dn(0.907051265, 0, 0.178571433, 0)
-        openBtn.Size = dn(0, 18, 0, 18)
-        openBtn.Font = Enum.Font.Gotham
-        openBtn.Text = "+"
-        openBtn.TextColor3 = dp(255, 255, 255)
-        openBtn.TextSize = 22.000
-        
-        dropdownBottom.Name = "DropdownBottom"
-        dropdownBottom.Parent = tabFrame
-        dropdownBottom.BackgroundColor3 = dp(52, 62, 72)
-        dropdownBottom.BorderSizePixel = 0
-        dropdownBottom.ClipsDescendants = true
-        dropdownBottom.Size = dn(0, 312, 0, 0)
-        dropdownBottom.AutoButtonColor = false
-        dropdownBottom.Visible = false
-        
-        bottomCorner.CornerRadius = dm(0, 6)
-        bottomCorner.Name = "DropdownBottomCorner"
-        bottomCorner.Parent = dropdownBottom
-        
-        bottomLayout.Name = "DropdownBottomLayout"
-        bottomLayout.Parent = dropdownBottom
-        bottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        bottomLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        bottomLayout.Padding = dm(0, 6)
-        
-        bottomPadding.Name = "DropdownBottomPadding"
-        bottomPadding.Parent = dropdownBottom
-        bottomPadding.PaddingTop = dm(0, 6)
-        
-        -- 添加选项
-        for _, option in ipairs(options) do
-            library.flags[flagName]:AddOption(option)
         end
-        
-        -- 自动调整大小
-        local isOpen = false
-        bottomLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            if isOpen then
-                dv:Tween({Size = dn(0, 312, 0, bottomLayout.AbsoluteContentSize.Y + 12)}, dropdownBottom, 0.1):Play()
-            end
-        end)
-        
-        local function toggleDropdown()
-            isOpen = not isOpen
-            if isOpen then
-                dropdownBottom.Visible = true
-                openBtn.Text = "-"
-                dv:Tween({Size = dn(0, 312, 0, bottomLayout.AbsoluteContentSize.Y + 12)}, dropdownBottom, 0.2):Play()
-            else
-                openBtn.Text = "+"
-                dv:Tween({Size = dn(0, 312, 0, 0)}, dropdownBottom, 0.2):Play()
-                wait(0.2)
-                dropdownBottom.Visible = false
-            end
+
+        library.flags[du].AddOption = function(self, optName)
+            local btn = dq("TextButton")
+            local corner = dq("UICorner")
+            btn.Name = optName
+            btn.Parent = eU
+            btn.BackgroundColor3 = dp(58, 69, 80)
+            btn.BorderSizePixel = 0
+            btn.Size = dn(0, 300, 0, 28)
+            btn.AutoButtonColor = false
+            btn.Font = Enum.Font.GothamSemibold
+            btn.Text = optName
+            btn.TextColor3 = dp(255, 255, 255)
+            btn.TextSize = 14.000
+            corner.CornerRadius = dm(0, 6)
+            corner.Name = "OptionCorner"
+            corner.Parent = btn
+            btn.MouseButton1Click:Connect(function()
+                eS.PlaceholderText = optName
+                eS.Text = ""
+                library.flags[du].State = optName
+                task.spawn(toggleDropdown)
+                ea(optName)
+            end)
+            addButtonFeedback(btn, dp(58,69,80))
         end
+
+        library.flags[du].RemoveOption = function(self, optName)
+            eU:WaitForChild(optName):Destroy()
+        end
+
+        library.flags[du]:SetOptions(eP)
+
+        addButtonFeedback(eQ, dp(52,62,72))
+        addButtonFeedback(eT, dp(255,255,255))
         
-        openBtn.MouseButton1Click:Connect(toggleDropdown)
-        
-        addButtonFeedback(dropdownBtn, dp(52, 62, 72))
-        addButtonFeedback(openBtn, dp(255, 255, 255))
-        
-        return {
-            SetOptions = function(newOptions)
-                library.flags[flagName]:SetOptions(newOptions)
-            end,
-            AddOption = function(option)
-                library.flags[flagName]:AddOption(option)
-            end,
-            RemoveOption = function(option)
-                library.flags[flagName]:RemoveOption(option)
-            end,
-            GetValue = function()
-                return library.flags[flagName].State
-            end
-        }
+        return library.flags[du]
     end
 
-    -- 存储标签页
-    tabs[tabName] = tabMethods
-    library.tabs[tabName] = tabMethods
-    
-    return tabMethods
+    return e7
 end
 
 -- 外部接口
-function WoofUIModule:CreateWindow(name)
-    if not dD then
-        self:Initialize()
-    end
+Library.Tabs = {}
+
+function Library.new(name)
+    local mainUI, mainFrame, tabButtons, tabHolder, title = createMainUI()
     
+    -- 设置窗口名称
     if name then
-        dE:FindFirstChild("TextLabel").Text = "  " .. name
+        title.Text = "  " .. name
     end
     
-    return {
-        CreateTab = function(tabName)
-            return WoofUIModule:CreateTab(tabName)
-        end,
-        Toggle = function(state)
-            dD.Enabled = not dD.Enabled
-        end,
-        Destroy = function()
-            if dD then
-                dD:Destroy()
-                dD = nil
+    local Tabs = {}
+    setmetatable(Tabs, {
+        __index = function(self, tabName)
+            if not self[tabName] then
+                self[tabName] = {}
+                local tabInstance = library:CreateTab(tabName)
+                
+                -- 为每个Tab添加元素创建方法
+                self[tabName].Button = function(args)
+                    tabInstance:NewButton(args.Title, args.Callback)
+                end
+                
+                self[tabName].Toggle = function(args)
+                    tabInstance:NewToggle(args.Title, args.Flag, args.Value, args.Callback)
+                end
+                
+                self[tabName].Bind = function(args)
+                    tabInstance:NewBind(args.Title, args.Key, args.Callback)
+                end
+                
+                self[tabName].Slider = function(args)
+                    tabInstance:NewSlider(args.Title, args.Flag, args.Min, args.Max, args.Default, args.Decimal, args.Callback)
+                end
+                
+                self[tabName].Dropdown = function(args)
+                    tabInstance:NewDropdown(args.Title, args.Flag, args.List, args.Callback)
+                end
+                
+                self[tabName].Separator = function()
+                    tabInstance:NewSeparator()
+                end
             end
+            return self[tabName]
         end
-    }
+    })
+    
+    return Tabs
 end
 
--- 设置UI名称
-function WoofUIModule:SetName(name)
-    if dD and dE then
-        local label = dE:FindFirstChild("TextLabel")
-        if label then
-            label.Text = "  " .. name
-        end
-    end
-end
-
--- 返回模块
-return WoofUIModule
+-- 返回库对象
+getgenv().Library = Library
+return Library
